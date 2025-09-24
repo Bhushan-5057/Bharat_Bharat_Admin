@@ -1,18 +1,42 @@
 "use client";
-
+ 
 import NewtonsCradleLoader from "@/components/common/NewtonsCradleLoader/NewtonsCradleLoader";
-import { DashboardResponse } from "@/store/api/dashboardApi";
+import { fetchAllActivitiesThunk } from "@/store/redux/slice/activitySlice";
+import { fetchAllEventsThunk } from "@/store/redux/slice/eventSlice";
+import { getPublications } from "@/store/redux/slice/publicationSlice";
+import { fetchAllServicesThunk } from "@/store/redux/slice/serviceSlice";
+import { AppDispatch, RootState } from "@/store/redux/store";
 import { ArrowRight, BookOpen, BriefcaseBusiness, CalendarDays, SquareActivity } from "lucide-react";
 import Link from "next/link";
-
-
-type WidgetsProps = {
-  data?: DashboardResponse | null;
-  loading?: boolean;
-};
-
-export function Widgets({ data, loading }: WidgetsProps) {
-
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+ 
+export function Widgets() {
+  const dispatch = useDispatch<AppDispatch>();
+ 
+  const { events = [], loading, } = useSelector(
+    (state: RootState) => state.events
+  );
+ 
+  const { activities = [] } = useSelector(
+    (state: RootState) => state.activities
+  );
+ 
+  const { services = [] } = useSelector(
+    (state: RootState) => state.service
+  );
+ 
+  const { publications=[] } = useSelector(
+    (state: RootState) => state.publications
+  );
+ 
+  useEffect(() => {
+    dispatch(fetchAllEventsThunk());
+    dispatch(fetchAllActivitiesThunk());
+    dispatch(fetchAllServicesThunk());
+    dispatch(getPublications());
+  }, [dispatch]);
+ 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
       <div className="p-6 bg-white rounded-2xl shadow-md border border-gray-200 dark:bg-black flex flex-col gap-3 w-full max-w-xs">
@@ -27,7 +51,7 @@ export function Widgets({ data, loading }: WidgetsProps) {
             <NewtonsCradleLoader />
           ) : (
             <p className="text-4xl font-bold text-gray-900 dark:text-white">
-              {data?.dashboard?.integrations?.count}
+              {events?.length || 0}
             </p>
           )}
         </div>
@@ -47,7 +71,7 @@ export function Widgets({ data, loading }: WidgetsProps) {
             <NewtonsCradleLoader />
           ) : (
             <p className="text-4xl font-bold text-gray-900 dark:text-white">
-              {data?.dashboard?.activities?.count}
+              {activities?.length || 0}
             </p>
           )}
         </div>
@@ -67,7 +91,7 @@ export function Widgets({ data, loading }: WidgetsProps) {
             <NewtonsCradleLoader />
           ) : (
             <p className="text-4xl font-bold text-gray-900 dark:text-white">
-              {data?.dashboard?.services?.count}
+              {services?.length || 0}
             </p>
           )}
         </div>
@@ -87,7 +111,7 @@ export function Widgets({ data, loading }: WidgetsProps) {
             <NewtonsCradleLoader />
           ) : (
             <p className="text-4xl font-bold text-gray-900 dark:text-white">
-              {data?.dashboard?.certificates?.count}
+              {publications?.length || 0}
             </p>
           )}
         </div>
@@ -98,5 +122,7 @@ export function Widgets({ data, loading }: WidgetsProps) {
     </div>
   );
 }
-
+ 
 export default Widgets;
+ 
+ 
