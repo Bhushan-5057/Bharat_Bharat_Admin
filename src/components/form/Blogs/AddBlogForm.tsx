@@ -54,7 +54,7 @@ export default function AddBlogForm({ closeModal }: { closeModal?: () => void })
         content: data.content,
         tags: data.tags,
         category: data.category,
-        file: file, 
+        file: file,
       };
 
       await dispatch(addBlog(payload)).unwrap();
@@ -119,9 +119,11 @@ export default function AddBlogForm({ closeModal }: { closeModal?: () => void })
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Blog Image</label>
-        <div className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 cursor-pointer hover:border-blue-500 transition" onClick={() => document.getElementById("fileInput")?.click()}>
+        <div
+          className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 cursor-pointer hover:border-blue-500 transition"
+        >
           {!preview ? (
-            <div className="flex flex-col items-center justify-center text-gray-400">
+            <div className="flex flex-col items-center justify-center text-gray-400 pointer-events-none">
               <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v8m0 0l-4-4m4 4l4-4m-4-8V4m0 0l-4 4m4-4l4 4" />
               </svg>
@@ -130,8 +132,16 @@ export default function AddBlogForm({ closeModal }: { closeModal?: () => void })
           ) : (
             <Image src={preview} alt="Preview" fill className="rounded-md object-cover" unoptimized />
           )}
-          <input id="fileInput" type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => handleFileChange(e.target.files)} />
+
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            onChange={(e) => handleFileChange(e.target.files)}
+          />
         </div>
+
         {errors.file_name && <p className="text-red-600 text-sm">{errors.file_name.message}</p>}
       </div>
 
