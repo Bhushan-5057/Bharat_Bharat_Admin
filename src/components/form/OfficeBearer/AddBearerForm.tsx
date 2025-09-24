@@ -133,11 +133,10 @@ export default function AddBearerForm({ closeModal }: { closeModal?: () => void 
             <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Profile Image</label>
                 <div
-                    className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 cursor-pointer hover:border-blue-500 transition"
-                    onClick={() => document.getElementById("fileInput")?.click()}
+                    className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 hover:border-blue-500 transition"
                 >
                     {!preview ? (
-                        <div className="flex flex-col items-center justify-center text-gray-400">
+                        <div className="flex flex-col items-center justify-center text-gray-400 pointer-events-none">
                             <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v8m0 0l-4-4m4 4l4-4m-4-8V4m0 0l-4 4m4-4l4 4" />
                             </svg>
@@ -149,7 +148,7 @@ export default function AddBearerForm({ closeModal }: { closeModal?: () => void 
                             alt="Preview"
                             fill
                             className="rounded-md object-cover"
-                            unoptimized={true}
+                            unoptimized
                         />
                     )}
                     <input
@@ -162,6 +161,7 @@ export default function AddBearerForm({ closeModal }: { closeModal?: () => void 
                 </div>
                 {errors.file_name && <p className="text-red-600 text-sm">{errors.file_name.message}</p>}
             </div>
+
 
             <div className="flex justify-end">
                 <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={isSubmitting}>
