@@ -9,7 +9,6 @@ import educationReducer from '@/store/redux/slice/educationSlice'
 import eventReducer from "./slice/eventSlice";
 import activityReducer from "./slice/activitySlice";
 import cityReducer from "./slice/citySlice";
-import dashboardReducer from "./slice/dashboardSlice";
 import photoReducer from '@/store/redux/slice/photoSlice'; 
 import videoReducer from '@/store/redux/slice/videoSlice';
 import donationReducer from '@/store/redux/slice/donationSlice';
@@ -28,7 +27,6 @@ export const store = configureStore({
     events: eventReducer,
     activities: activityReducer,
     cities: cityReducer,
-    dashboard: dashboardReducer,
     blogs:blogsReducer,
      photos: photoReducer,
     video: videoReducer,
