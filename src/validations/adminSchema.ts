@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const allowedDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"];
+const allowedDomains =  ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "koliinfotech.com"];;
 
 export const adminSchema = z.object({
 name: z
