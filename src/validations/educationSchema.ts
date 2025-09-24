@@ -1,16 +1,17 @@
 import { z } from "zod";
 
 export const educationSchema = z.object({
-  title: z
-    .string()
-    .nonempty("Education title is required")
-    .min(1, "Title must be at least 1 character")
-    .max(150, "Title cannot be more than 150 characters")
-    .refine((val) => {
-      const normalized = val.normalize("NFC").trim();
-      return /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u.test(normalized);
-    }, "Title must contain only letters with single spaces; no leading/trailing spaces, hyphens, or numbers")
-    .refine((val) => !val.includes("@"), "Title cannot be an email"),
+title: z
+  .string()
+  .nonempty("Education title is required")
+  .min(1, "Title must be at least 1 character")
+  .max(150, "Title cannot be more than 150 characters")
+  .refine((val) => {
+    const normalized = val.normalize("NFC").trim();
+    return /^[\p{L}\p{M}0-9\s.,()-]+$/u.test(normalized);
+  }, "Title contains invalid characters. Only letters, numbers, spaces, hyphens, parentheses, commas, and periods are allowed")
+  .refine((val) => !val.includes("@"), "Title cannot be an email"),
+
   description: z
     .string()
     .min(5, "Description is required")
