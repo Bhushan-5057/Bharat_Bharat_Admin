@@ -12,7 +12,7 @@ const OverviewSection = () => {
         </div>
 
         <div className="w-full md:w-1/2 p-4 rounded-md border mt-2 bg-white dark:bg-black dark:text-white">
-          <h2 className="text-xl font-semibold mb-2">Recent Events</h2>
+          <h2 className="text-xl font-semibold mb-2"> Events</h2>
          <RecentCard />
         </div>
       </div>
