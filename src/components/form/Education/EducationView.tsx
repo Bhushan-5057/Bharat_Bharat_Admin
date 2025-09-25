@@ -112,15 +112,15 @@ export default function EducationView({ education }: EducationViewProps) {
             onClick={() => setSelectedImage(null)}
           >
             <div
-              className="relative max-h-[60vh] overflow-y-auto flex items-center justify-center"
+              className="relative max-w-[90vw] max-h-[80vh] flex items-center justify-center overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <Image
                 src={selectedImage}
                 alt="Selected Education"
-                width={600}
-                height={100}
-                className="rounded-lg object-cover shadow-md max-h-[90vh]"
+                width={400}
+                height={300}
+                className="rounded-lg object-contain shadow-md"
               />
               <button
                 onClick={() => setSelectedImage(null)}
@@ -131,6 +131,8 @@ export default function EducationView({ education }: EducationViewProps) {
             </div>
           </div>
         )}
+
+
 
       </div>
     </div>
