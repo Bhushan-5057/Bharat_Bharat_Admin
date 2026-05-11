@@ -49,7 +49,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, []);  
 
   const toggleSidebar = () => {
     setIsExpanded((prev) => !prev);
