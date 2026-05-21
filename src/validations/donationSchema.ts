@@ -2,26 +2,6 @@ import { z } from "zod";
 
 export const donationSchema = (mode: "add" | "edit" = "add") =>
   z.object({
-    title: z
-      .string()
-      .trim()
-      .nonempty("Title is required")
-      .regex(/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u, {
-        message:
-          "Title must contain only letters with single spaces between words; no numbers, hyphens or extra spaces",
-      }),
-
-    subTitle: z
-      .string()
-      .trim()
-      .nonempty("Sub Title is required")
-      .regex(/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u, {
-        message:
-          "Sub Title must contain only letters with single spaces between words; no numbers, hyphens or extra spaces",
-      }),
-
-    description: z.string().trim().nonempty("Description is required"),
-
     accountHolder: z
       .string()
       .trim()
@@ -51,28 +31,44 @@ export const donationSchema = (mode: "add" | "edit" = "add") =>
       .string()
       .trim()
       .nonempty("IFSC Code is required")
-      .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, {
+      .transform((value) => value.toUpperCase())
+      .refine((value) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(value), {
         message:
           "Invalid IFSC Code. Must follow standard format (e.g., SBIN0001234)",
       }),
+      
+    upiId: z
+      .string()
+      .trim()
+      .nonempty("UPI ID is required")
+      .min(5, "UPI ID is too short")
+      .max(50, "UPI ID is too long")
+      .regex(/^[a-zA-Z0-9._-]+@[a-zA-Z]{2,}$/i, {
+        message:
+          "Invalid UPI ID format. Example: qrbharatbharti.srt@sbi",
+      })
+      .refine((value) => !value.includes(" "), {
+        message: "UPI ID cannot contain spaces",
+      })
+      .transform((value) => value.toLowerCase()),
 
     imageFile:
       mode === "add"
         ? z
-            .any()
-            .refine(
-              (files) => files && files.length > 0,
-              "Please select an image file"
-            )
-            .refine(
-              (files) =>
-                files &&
-                files.length > 0 &&
-                ["image/jpeg", "image/png", "image/webp"].includes(
-                  files[0]?.type
-                ),
-              "Only JPG, PNG, or WEBP images are allowed (no GIF, MP4, or SVG)"
-            )
+          .any()
+          .refine(
+            (files) => files && files.length > 0,
+            "Please select an image file"
+          )
+          .refine(
+            (files) =>
+              files &&
+              files.length > 0 &&
+              ["image/jpeg", "image/png", "image/webp"].includes(
+                files[0]?.type
+              ),
+            "Only JPG, PNG, or WEBP images are allowed (no GIF, MP4, or SVG)"
+          )
         : z.any().optional(),
   });
 

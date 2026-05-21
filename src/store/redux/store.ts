@@ -14,6 +14,7 @@ import videoReducer from '@/store/redux/slice/videoSlice';
 import donationReducer from '@/store/redux/slice/donationSlice';
 import blogsReducer from "@/store/redux/slice/blogSlice";
 import appointmentReducer from '@/store/redux/slice/appointmentSlice';
+import memberReducer from '@/store/redux/slice/memberSlice';
 
 export const store = configureStore({
   reducer: {
@@ -31,11 +32,11 @@ export const store = configureStore({
      photos: photoReducer,
     video: videoReducer,
     donation: donationReducer,
+    member: memberReducer,
      appointment: appointmentReducer,
   },
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-
 

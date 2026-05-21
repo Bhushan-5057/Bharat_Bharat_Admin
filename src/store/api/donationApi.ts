@@ -2,13 +2,11 @@
 
   export interface Donation {
     id: string;
-    title: string;
-    description: string;
-    sub_title: string;
     account_holder_name: string;
     account_number: string;
     bank_name: string;
     ifsc_code: string;
+    upi_id: string;
     file_name?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -29,6 +27,7 @@
     account_number: string;
     bank_name: string;
     ifsc_code: string;
+    upi_id: string;
     file?: File;
   }
 
@@ -40,6 +39,7 @@
     account_number?: string;
     bank_name?: string;
     ifsc_code?: string;
+    upi_id?: string;
     file?: File;
   }
 

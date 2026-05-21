@@ -28,13 +28,11 @@ import { AppDispatch, RootState } from "@/store/redux/store";
  
 interface Donation {
   id: string;
-  title: string;
-  description: string;
-  sub_title?: string;
   account_holder_name: string;
   account_number: string;
   bank_name: string;
   ifsc_code: string;
+  upi_id: string;
   created_by?: number;
   creator?: {
     id: number;
@@ -121,6 +119,7 @@ export default function DonationTableOne() {
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Bank</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Account No</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">IFSC Code</TableCell>
+                <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">UPI ID</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Created By</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Actions</TableCell>
               </TableRow>
@@ -128,7 +127,6 @@ export default function DonationTableOne() {
  
             <TableBody>
               {loading ? (
-                // Skeleton rows
                 [...Array(Math.min(itemsPerPage, donations.length || 1))].map((_, idx) => (
                   <TableRow key={idx}>
                     <TableCell className="px-5 py-4">
@@ -150,6 +148,9 @@ export default function DonationTableOne() {
                       <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                     </TableCell>
                     <TableCell className="px-5 py-4">
+                      <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
                       <div className="flex gap-2">
                         <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
  
@@ -165,7 +166,7 @@ export default function DonationTableOne() {
                         <div className="relative w-16 h-16">
                           <Image
                             src={`data:image/jpeg;base64,${donation.data}`}
-                            alt={donation.title || "Donation"}
+                            alt={"Donation"}
                             fill
                             style={{ objectFit: "cover" }}
                             className="rounded-md border"
@@ -182,6 +183,7 @@ export default function DonationTableOne() {
                     <TableCell className="px-5 py-4">{donation.bank_name}</TableCell>
                     <TableCell className="px-5 py-4">{donation.account_number}</TableCell>
                     <TableCell className="px-5 py-4">{donation.ifsc_code}</TableCell>
+                    <TableCell className="px-5 py-4">{donation.upi_id}</TableCell>
                     <TableCell className="px-5 py-4">{donation.creator?.name}</TableCell>
                     <TableCell className="px-0 py-4">
                       <div className="flex items-center gap-2">
@@ -200,7 +202,7 @@ export default function DonationTableOne() {
                 ))
               ) : (
                 <TableRow key="no-donations">
-                  <TableCell colSpan={7} className="text-center py-6 text-gray-500 justify-items-center">
+                  <TableCell colSpan={8} className="text-center py-6 text-gray-500 justify-items-center">
                     No donation details added
                   </TableCell>
                 </TableRow>
@@ -247,7 +249,7 @@ export default function DonationTableOne() {
                   <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border">
                     <Image
                       src={`data:image/jpeg;base64,${selectedDonation.data}`}
-                      alt={selectedDonation.title || "Donation"}
+                      alt={"Donation"}
                       fill
                       style={{ objectFit: "cover" }}
                     />
@@ -258,28 +260,6 @@ export default function DonationTableOne() {
                   </div>
                 )}
               </div>
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {selectedDonation.title || "Untitled Donation"}
-                </h3>
-                {selectedDonation.sub_title && (
-                  <p className="text-gray-600 dark:text-gray-300 mt-1">
-                    {selectedDonation.sub_title}
-                  </p>
-                )}
-              </div>
- 
-              <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                  Description
-                </h4>
-                <div className="max-h-40 min-h-[80px] overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800 custome-scroll">
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line text-sm leading-relaxed">
-                    {selectedDonation.description}
-                  </p>
-                </div>
-              </div>
- 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-200">
@@ -309,6 +289,14 @@ export default function DonationTableOne() {
                   </p>
                   <p className="text-gray-600 dark:text-gray-300">
                     {selectedDonation.ifsc_code}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">
+                    UPI ID
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    {selectedDonation.upi_id}
                   </p>
                 </div>
                 <div className="col-span-2">

@@ -15,13 +15,11 @@ import { DonationFormData, donationSchema } from "@/validations/donationSchema";
 interface DonationFormProps {
   initialDonation?: {
     id: string;
-    title: string;
-    description: string;
-    sub_title?: string;
     account_holder_name: string;
     account_number: string;
     bank_name: string;
     ifsc_code: string;
+    upi_id: string;
     file_name?: string;
     data?: string;
     creator?: { id: number; name: string };
@@ -47,13 +45,11 @@ export const DonationForm: React.FC<DonationFormProps> = ({
   } = useForm<DonationFormData>({
     resolver: zodResolver(donationSchema(mode)),
     defaultValues: {
-      title: initialDonation?.title || "",
-      subTitle: initialDonation?.sub_title || "",
-      description: initialDonation?.description || "",
       accountHolder: initialDonation?.account_holder_name || "",
       accountNo: initialDonation?.account_number || "",
       bankName: initialDonation?.bank_name || "",
       ifscCode: initialDonation?.ifsc_code || "",
+      upiId: initialDonation?.upi_id || "",
     },
   });
   const [preview, setPreview] = useState<string | null>(
@@ -66,13 +62,11 @@ export const DonationForm: React.FC<DonationFormProps> = ({
 
   useEffect(() => {
     if (initialDonation) {
-      setValue("title", initialDonation.title);
-      setValue("subTitle", initialDonation.sub_title || "");
-      setValue("description", initialDonation.description);
       setValue("accountHolder", initialDonation.account_holder_name);
       setValue("accountNo", initialDonation.account_number);
       setValue("bankName", initialDonation.bank_name);
       setValue("ifscCode", initialDonation.ifsc_code);
+      setValue("upiId", initialDonation.upi_id);
     }
   }, [initialDonation, setValue]);
 
@@ -94,13 +88,11 @@ export const DonationForm: React.FC<DonationFormProps> = ({
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("sub_title", data.subTitle);
-      formData.append("account_holder_name", data.accountHolder);
-      formData.append("account_number", data.accountNo);
-      formData.append("bank_name", data.bankName);
-      formData.append("ifsc_code", data.ifscCode);
+      formData.append("account_holder_name", data.accountHolder.trim());
+      formData.append("account_number", data.accountNo.trim());
+      formData.append("bank_name", data.bankName.trim());
+      formData.append("ifsc_code",  data.ifscCode.trim().toUpperCase());
+      formData.append("upi_id", data.upiId.trim().toLowerCase());
 
       if (data.imageFile && data.imageFile.length > 0) {
         formData.append("file_name", data.imageFile[0]);
@@ -144,34 +136,6 @@ export const DonationForm: React.FC<DonationFormProps> = ({
       "
     >
       <div className="flex flex-col">
-        <label className="mb-2 font-medium">Title</label>
-        <input
-          type="text"
-          {...register("title")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.title && <span className="text-red-500 text-sm mt-1">{errors.title.message}</span>}
-      </div>
-
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Sub Title</label>
-        <input
-          type="text"
-          {...register("subTitle")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.subTitle && <span className="text-red-500 text-sm mt-1">{errors.subTitle.message}</span>}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Description</label>
-        <textarea
-          rows={4}
-          {...register("description")}
-          className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.description && <span className="text-red-500 text-sm mt-1">{errors.description.message}</span>}
-      </div>
-      <div className="flex flex-col">
         <label className="mb-2 font-medium">Account Holder Name</label>
         <input
           type="text"
@@ -210,6 +174,15 @@ export const DonationForm: React.FC<DonationFormProps> = ({
           className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
         />
         {errors.ifscCode && <span className="text-red-500 text-sm mt-1">{errors.ifscCode.message}</span>}
+      </div>
+      <div className="flex flex-col">
+        <label className="mb-2 font-medium">UPI ID</label>
+        <input
+          type="text"
+          {...register("upiId")}
+          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
+        />
+        {errors.upiId && <span className="text-red-500 text-sm mt-1">{errors.upiId.message}</span>}
       </div>
       <div className="flex flex-col">
         <label className="mb-2 font-medium">Upload Image</label>

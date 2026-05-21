@@ -51,6 +51,7 @@ const navItems: NavItem[] = [
         icon: <SwatchBook />,
         subItems: [
           { name: "Publications", path: "/publication-table", pro: false, icon: <BookIcon /> },
+          { name: "Members", path: "/members-table", pro: false, icon: <UsersIcon /> },
           { name: "Educations", path: "/education-table", pro: false, icon: <GraduationCapIcon /> },
           { name: "Events", path: "/event-table", pro: false, icon: <CalendarIcon /> },
           { name: "Activities", path: "/activity-table", pro: false, icon: <ActivityIcon /> },
@@ -357,5 +358,4 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
-
 
