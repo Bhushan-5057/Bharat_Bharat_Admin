@@ -30,6 +30,7 @@ const AuthContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             height={40}
             src={logoSrc}
             alt="Bharat Bharati Trust Logo"
+            style={{ width: "auto", height: "auto" }}
           />
           <p className="text-center text-gray-700 dark:text-white/80 text-sm mt-2">
             Dedicated to serving society through education, cultural preservation, and community welfare.
@@ -56,6 +57,7 @@ const AuthContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 height={40}
                 src={logoSrc}
                 alt="Bharat Bharati Trust Logo"
+                style={{ width: "auto", height: "auto" }}
               />
               <p className="text-center text-gray-700 dark:text-white/80">
                 Dedicated to serving society through education, cultural preservation, and community welfare.

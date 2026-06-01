@@ -23,7 +23,7 @@ import AdminView from "../form/Admin/AdminView";
 import UpdateAdmin from "../form/Admin/UpdateAdmin";
 import DeleteAdminConfirm from "../form/Admin/DeleteConfirm";
 
-import { fetchAllUsersThunk, updateUserStatusThunk } from "@/store/redux/slice/userSlice";
+import { deleteUserThunk, fetchAllUsersThunk } from "@/store/redux/slice/userSlice";
 import { showError, showSuccess } from "@/lib/utils/toast";
 import { User } from "@/store/redux/slice/userSlice";
 import { MESSAGES } from "../common/constants/utlis";
@@ -40,14 +40,19 @@ export default function AdminTableOne() {
 
   const { users = [], loading, error } = useSelector((state: RootState) => state.user);
   const currentUser = useSelector((state: RootState) => state.auth.user);
+  const isSuperAdmin = currentUser?.role === "super_admin";
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
 
-  const filteredUsers = users.filter(
-    (user) => user.id !== currentUser?.id && user.created_by !== "system"
-  );
+  const filteredUsers = users.filter((user) => {
+    const isCurrentUser = user.id === currentUser?.id;
+    const isSystemUser = user.created_by === "system";
+    const isHiddenSuperAdmin = !isSuperAdmin && user.role === "super_admin";
+
+    return !isCurrentUser && !isSystemUser && !isHiddenSuperAdmin;
+  });
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
   const paginatedUsers = filteredUsers.slice(
@@ -78,6 +83,7 @@ export default function AdminTableOne() {
   };
 
   const handleDelete = (user: User) => {
+    if (!isSuperAdmin) return;
     setSelectedUser(user);
     setModalMode("delete");
     openModal();
@@ -87,7 +93,7 @@ export default function AdminTableOne() {
     if (!selectedUser) return;
     setDeleteLoading(true);
     try {
-      await dispatch(updateUserStatusThunk({ id: selectedUser.id, status: "DELETED" })).unwrap();
+      await dispatch(deleteUserThunk({ id: selectedUser.id })).unwrap();
       await dispatch(fetchAllUsersThunk());
       showSuccess(MESSAGES.DELETE_SUCCESS);
       closeModal();
@@ -113,6 +119,33 @@ export default function AdminTableOne() {
   return JSON.stringify(err);
 };
 
+const formatRole = (role?: string) => {
+  if (role === "super_admin") return "Super Admin";
+  if (role === "admin") return "Admin";
+  return role || "-";
+};
+
+const formatCreatedBy = (user: User) => {
+  if (user.creator?.name) return user.creator.name;
+
+  if (
+    typeof user.created_by === "object" &&
+    user.created_by !== null &&
+    "name" in user.created_by
+  ) {
+    return user.created_by.name || "N/A";
+  }
+
+  const creatorId = user.created_by?.toString();
+
+  if (!creatorId || creatorId === "system") return "System";
+  if (creatorId === currentUser?.id?.toString()) return currentUser.name;
+
+  const creator = users.find((adminUser) => adminUser.id?.toString() === creatorId);
+
+  return creator?.name || creatorId;
+};
+
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -123,6 +156,7 @@ export default function AdminTableOne() {
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Name</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Email</TableCell>
+                <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Role</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Created by</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Actions</TableCell>
               </TableRow>
@@ -138,6 +172,9 @@ export default function AdminTableOne() {
                     </TableCell>
                     <TableCell className="px-5 py-4">
                       <div className="h-4 w-48 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                     </TableCell>
                     <TableCell className="px-5 py-4">
                       <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
@@ -166,7 +203,8 @@ export default function AdminTableOne() {
                   <TableRow key={user.id}>
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{user.name}</TableCell>
                     <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{user.email}</TableCell>
-                    <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{user.created_by}</TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{formatRole(user.role)}</TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{formatCreatedBy(user)}</TableCell>
                     <TableCell className="px-0 py-4 text-sm">
                       <div className="flex items-center gap-2">
                         <button
@@ -183,13 +221,15 @@ export default function AdminTableOne() {
                         >
                           <Pencil size={16} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(user)}
-                          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-black hover:text-red-600 dark:text-white dark:hover:text-red-600"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => handleDelete(user)}
+                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-black hover:text-red-600 dark:text-white dark:hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -14,11 +14,15 @@ import { MESSAGES } from "@/components/common/constants/utlis";
 import Image from "next/image";
 import { CreateEventFormData, createEventSchema } from "@/validations/eventSchema";
 import { createEventThunk, fetchAllEventsThunk } from "@/store/redux/slice/eventSlice";
+import { EventDatePicker, EventTimePicker } from "./EventDateTimePickers";
 
 
 export default function AddEventForm({ closeModal }: { closeModal?: () => void }) {
     const dispatch = useDispatch<AppDispatch>();
     const [preview, setPreview] = useState<string | null>(null);
+    const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .split("T")[0];
 
     const {
         register,
@@ -27,12 +31,17 @@ export default function AddEventForm({ closeModal }: { closeModal?: () => void }
         setError,
         watch,
         setValue,
+        trigger,
         formState: { errors, isSubmitting },
     } = useForm<CreateEventFormData>({
         resolver: zodResolver(createEventSchema),
+        mode: "onChange",
     });
 
     const watchFile = watch("file_name");
+    const watchDate = watch("event_date");
+    const watchStartTime = watch("start_time");
+    const watchEndTime = watch("end_time");
     useEffect(() => {
         if (watchFile && watchFile.length > 0) {
             setPreview(URL.createObjectURL(watchFile[0]));
@@ -64,6 +73,10 @@ export default function AddEventForm({ closeModal }: { closeModal?: () => void }
             const payload = {
                 title: data.title || "",
                 description: data.description || "",
+                venue: data.venue || "",
+                event_date: data.event_date || "",
+                start_time: data.start_time || "",
+                end_time: data.end_time || "",
                 file_name: data.file_name[0],
             };
 
@@ -84,7 +97,7 @@ export default function AddEventForm({ closeModal }: { closeModal?: () => void }
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 w-full space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
                 <Input id="title" placeholder="Enter Event title" {...register("title")} />
@@ -96,10 +109,58 @@ export default function AddEventForm({ closeModal }: { closeModal?: () => void }
                 <textarea
                     id="description"
                     placeholder="Enter Event description"
-                    className="w-full border rounded-md p-2 text-sm"
+                    className="min-h-24 w-full resize-y rounded-md border p-2 text-sm leading-relaxed"
                     {...register("description")}
                 />
                 {errors.description && <p className="text-red-600 text-sm">{errors.description?.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="event_date">Date</Label>
+                <input type="hidden" {...register("event_date")} />
+                <EventDatePicker
+                    id="event_date"
+                    value={watchDate}
+                    minDate={todayDate}
+                    onChange={(nextDate) =>
+                        setValue("event_date", nextDate, { shouldDirty: true, shouldValidate: true })
+                    }
+                />
+                {errors.event_date && <p className="text-red-600 text-sm">{errors.event_date?.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="start_time">Start Time</Label>
+                <input type="hidden" {...register("start_time")} />
+                <EventTimePicker
+                    id="start_time"
+                    value={watchStartTime}
+                    onChange={async (nextTime) => {
+                        setValue("start_time", nextTime, { shouldDirty: true });
+                        await trigger(["start_time", "end_time"]);
+                    }}
+                />
+                {errors.start_time && <p className="text-red-600 text-sm">{errors.start_time?.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="end_time">End Time</Label>
+                <input type="hidden" {...register("end_time")} />
+                <EventTimePicker
+                    id="end_time"
+                    value={watchEndTime}
+                    onChange={async (nextTime) => {
+                        setValue("end_time", nextTime, { shouldDirty: true });
+                        await trigger(["start_time", "end_time"]);
+                    }}
+                />
+                {errors.end_time && <p className="text-red-600 text-sm">{errors.end_time?.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="venue">Venue</Label>
+                <Input id="venue" placeholder="Enter Event venue" {...register("venue")} />
+                {errors.venue && <p className="text-red-600 text-sm">{errors.venue?.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -109,7 +170,7 @@ export default function AddEventForm({ closeModal }: { closeModal?: () => void }
 
                 {preview && (
 
-                    <div className="relative mt-2 h-24 w-24">
+                    <div className="relative mt-2 h-24 w-24 sm:h-28 sm:w-28">
                         <Image
                             src={preview}
                             alt="Preview"

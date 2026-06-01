@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Outfit } from "next/font/google";
 import "./globals.css";
 
 import { SidebarProvider } from "@/context/SidebarContext";
@@ -13,10 +12,6 @@ import { Toaster } from "sonner";
 import ProtectedRoute from "@/ProtectedRoute";
 import IndianFlagLoader from "@/components/ui/Loader/IndianFlagLoader";
 
-
-const outfit = Outfit({
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,
@@ -36,7 +31,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${outfit.className} dark:bg-gray-900 relative`}>
+      <body className="dark:bg-gray-900 relative">
         {loading ? (
           <IndianFlagLoader />
         ) : (

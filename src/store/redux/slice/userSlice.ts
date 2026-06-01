@@ -4,17 +4,19 @@ import {
   fetchAllUsers,
   fetchUserById,
   updateUser,
-  updateUserStatus,
 } from "@/store/api/userApi";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 export interface User {
   id: string;
-  status: string;
   name: string;
   email: string;
+  role?: "admin" | "super_admin" | string;
   password?: string;
-  created_by?: string;
+  created_by?: string | number | { id?: string | number; name?: string };
+  creator?: {
+    name?: string;
+  };
 }
 
 interface UserState {
@@ -35,15 +37,13 @@ const initialState: UserState = {
 interface CreateUserPayload {
   name: string;
   email: string;
-  status?: string;
   password: string;
+  role?: "admin" | "super_admin";
 }
 
 interface UpdateUserPayload {
   id: string;
   name: string;
-  email: string;
-  status?: string;
   password?: string;
 }
 
@@ -115,23 +115,6 @@ export const fetchUserByIdThunk = createAsyncThunk(
   }
 );
 
-export const updateUserStatusThunk = createAsyncThunk(
-  "user/updateUserStatus",
-  async (
-    { id, status }: { id: string; status: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await updateUserStatus(id, status);
-      return { id, status, message: response.message || "User status updated" };
-    } catch (error: unknown) {
-      return rejectWithValue(
-        getErrorMessage(error, "Failed to update user status")
-      );
-    }
-  }
-);
-
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -197,21 +180,19 @@ const userSlice = createSlice({
         state.error = action.payload as string;
         state.message = "Failed to update user";
       })
-      .addCase(updateUserStatusThunk.pending, (state) => {
+      .addCase(deleteUserThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateUserStatusThunk.fulfilled, (state, action) => {
+      .addCase(deleteUserThunk.fulfilled, (state, action) => {
         state.loading = false;
-        const { id, status, message } = action.payload;
-        const user = state.users.find((u) => u.id === id);
-        if (user) user.status = status;
-        state.message = message;
+        state.users = state.users.filter((user) => user.id !== action.payload.id);
+        state.message = action.payload.message;
       })
-      .addCase(updateUserStatusThunk.rejected, (state, action) => {
+      .addCase(deleteUserThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-        state.message = "Failed to update user status";
+        state.message = "Failed to delete user";
       });
   },
 });

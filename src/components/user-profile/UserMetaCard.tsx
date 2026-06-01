@@ -2,16 +2,18 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { IMGAGES } from "../common/constants/utlis";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/redux/store";
 
 interface User {
   name: string;
   email: string;
   role:string;
-  status?: "active" | "deactive" | string;
 }
 export default function UserMetaCard() {
   
   const [user, setUser] = useState<User | null>(null);
+  const authUser = useSelector((state: RootState) => state.auth.user);
 
      const [profileImage, setProfileImage] = useState<string>(IMGAGES.PROFILE);
  
@@ -21,14 +23,23 @@ export default function UserMetaCard() {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           setUser(JSON.parse(storedUser));
+        } else if (authUser) {
+          setUser(authUser as User);
         } 
-      }, []);
+      }, [authUser]);
 
       useEffect(() => {
           const profileImages = [IMGAGES.PROFILE, IMGAGES.PROFILE1];
           const randomIndex = Math.floor(Math.random() * profileImages.length);
           setProfileImage(profileImages[randomIndex]);
         }, [user]); 
+
+      const roleLabel =
+        user?.role === "super_admin"
+          ? "Super Admin"
+          : user?.role === "admin"
+            ? "Admin"
+            : user?.role || "No role found";
       
     
   return (
@@ -50,7 +61,7 @@ export default function UserMetaCard() {
               </h4>
               <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                {user?.role || "No role found"}
+                {roleLabel}
                 </p>
                 <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

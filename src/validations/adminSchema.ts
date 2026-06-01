@@ -28,3 +28,18 @@ email: z
 });
 
 export type AdminFormData = z.infer<typeof adminSchema>;
+
+export const adminUpdateSchema = z.object({
+  name: z
+    .string()
+    .regex(/^(?!\s*$)[A-Za-z\s]+$/, "Name must only contain letters and spaces, and cannot be blank"),
+  password: z
+    .string()
+    .max(50, "Password must be less than 50 characters")
+    .optional()
+    .refine((val) => !val || val.length >= 6, {
+      message: "Password must be at least 6 characters",
+    }),
+});
+
+export type AdminUpdateFormData = z.infer<typeof adminUpdateSchema>;

@@ -32,7 +32,7 @@ export default function EventTable() {
     <div>
       <div className="space-y-6">
         <ComponentCard title="Event's  Table ">
-          <div className="p-4 flex justify-end">
+          <div className="p-2 flex justify-end">
             <Button
               onClick={openModal}
               variant="primary"
@@ -47,13 +47,13 @@ export default function EventTable() {
           <EventTableOne />
         </ComponentCard>
       </div>
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
-          <div className="px-2 pr-14">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+      <Modal isOpen={isOpen} onClose={closeModal} className="m-2 w-[calc(100vw-1rem)] max-w-[720px] sm:m-4 sm:w-[calc(100vw-2rem)]">
+        <div className="no-scrollbar relative w-full max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-4 dark:bg-gray-900 sm:rounded-3xl sm:p-6 lg:p-8">
+          <div className="px-1 sm:px-2 sm:pr-14">
+            <h4 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90 sm:text-2xl">
               Add New Event
             </h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
+            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400 sm:mb-6 lg:mb-7">
               Fill in the details below to add a new Event to the database.
             </p>
           </div>

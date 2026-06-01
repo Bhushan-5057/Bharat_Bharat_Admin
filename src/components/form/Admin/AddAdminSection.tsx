@@ -28,7 +28,7 @@ export default function AddAdminForm({ closeModal }: { closeModal?: () => void }
 
   const onSubmit = async (data: AdminFormData) => {
   try {
-    await dispatch(createUserThunk(data)).unwrap();
+    await dispatch(createUserThunk({ ...data, role: "admin" })).unwrap();
     await dispatch(fetchAllUsersThunk());
     showSuccess(MESSAGES.ADD_SUCCESS);
     closeModal?.();

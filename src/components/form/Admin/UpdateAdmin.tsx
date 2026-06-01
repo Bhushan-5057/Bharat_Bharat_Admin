@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input/input";
 import Button from "@/components/ui/button/Button";
 import { showError, showSuccess } from "@/lib/utils/toast";
 import { Eye, EyeOff } from "lucide-react";
-import { adminSchema, AdminFormData } from "@/validations/adminSchema";
+import { adminUpdateSchema, AdminUpdateFormData } from "@/validations/adminSchema";
 import { MESSAGES } from "@/components/common/constants/utlis";
 
 interface UpdateAdminProps {
@@ -26,7 +26,6 @@ interface UpdateAdminProps {
 interface UpdateUserPayload {
   id: string;
   name: string;
-  email: string;
   password?: string;
 }
 
@@ -34,19 +33,17 @@ export default function UpdateAdmin({ admin, onClose }: UpdateAdminProps) {
   const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const dummyPassword = "********";
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<AdminFormData>({
-    resolver: zodResolver(adminSchema),
+  } = useForm<AdminUpdateFormData>({
+    resolver: zodResolver(adminUpdateSchema),
     defaultValues: {
       name: admin?.name || "",
-      email: admin?.email || "",
-      password: dummyPassword,
+      password: "",
     },
   });
 
@@ -54,13 +51,12 @@ export default function UpdateAdmin({ admin, onClose }: UpdateAdminProps) {
     if (admin) {
       reset({
         name: admin.name,
-        email: admin.email,
-        password: dummyPassword,
+        password: "",
       });
     }
   }, [admin, reset]);
 
-  const onSubmit = async (data: AdminFormData) => {
+  const onSubmit = async (data: AdminUpdateFormData) => {
     if (!admin) return;
     setLoading(true);
 
@@ -68,17 +64,16 @@ export default function UpdateAdmin({ admin, onClose }: UpdateAdminProps) {
       const payload: UpdateUserPayload = {
         id: admin.id,
         name: data.name,
-        email: data.email,
       };
 
-      if (data.password && data.password !== dummyPassword) {
+      if (data.password) {
         payload.password = data.password;
       }
 
       await dispatch(updateUserThunk(payload)).unwrap();
       await dispatch(fetchAllUsersThunk());
       showSuccess(MESSAGES.EDIT_SUCCESS);
-      reset({ ...data, password: dummyPassword });
+      reset({ name: data.name, password: "" });
       onClose();
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -103,8 +98,7 @@ export default function UpdateAdmin({ admin, onClose }: UpdateAdminProps) {
 
       <div>
         <label className="block text-sm font-medium mb-1">Email</label>
-        <Input {...register("email")} placeholder="Enter admin email" />
-        {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+        <Input value={admin.email} placeholder="Enter admin email" disabled readOnly />
       </div>
 
       <div>

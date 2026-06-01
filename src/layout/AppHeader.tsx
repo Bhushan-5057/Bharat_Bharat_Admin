@@ -143,6 +143,7 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
               className="dark:hidden"
               src={logoSrc}
               alt="Logo"
+              style={{ width: "auto", height: "auto" }}
             />
             <Image
               width={154}
@@ -150,6 +151,7 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
               className="hidden dark:block"
               src={logoSrc}
               alt="Logo"
+              style={{ width: "auto", height: "auto" }}
             />
           </Link>
 

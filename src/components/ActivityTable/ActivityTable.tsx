@@ -47,19 +47,53 @@ export default function ActivityTable() {
           <ActivityTableOne />
         </ComponentCard>
       </div>
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
-          <div className="px-2 pr-14">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Add New Activity
-            </h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Fill in the details below to add a new Activity to the database.
-            </p>
-          </div>
-          <AddActivityForm closeModal={closeModal} />
-        </div>
-      </Modal>
+     <Modal
+  isOpen={isOpen}
+  onClose={closeModal}
+  className="
+    w-full
+    max-w-[95%]
+    sm:max-w-[90%]
+    md:max-w-175
+    lg:max-w-212.5
+    xl:max-w-225
+    mx-auto
+    mt-10
+    sm:mt-14
+    md:mt-20
+    lg:mt-24
+    px-2
+  "
+>
+  <div
+    className="
+      no-scrollbar
+      relative
+      w-full
+      overflow-y-auto
+      rounded-2xl
+      bg-white
+      dark:bg-gray-900
+      p-4
+      sm:p-6
+      md:p-8
+      lg:p-10
+      max-h-[90vh]
+    "
+  >
+    <div className="px-1 sm:px-2 pr-10">
+      <h4 className="mb-2 text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white/90">
+        Add New Activity
+      </h4>
+
+      <p className="mb-5 text-sm text-gray-500 dark:text-gray-400 sm:mb-6">
+        Fill in the details below to add a new Activity to the database.
+      </p>
+    </div>
+
+    <AddActivityForm closeModal={closeModal} />
+  </div>
+</Modal>
     </div>
   )
 }

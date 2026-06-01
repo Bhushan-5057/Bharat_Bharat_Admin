@@ -4,7 +4,6 @@ interface UserQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: string;
   role?: string;
   department?: string;
 }
@@ -32,8 +31,8 @@ export const fetchUserById = async (id: string) => {
 export interface CreateUserPayload {
   email: string;
   name: string;
-  status?: string; 
   password: string;
+  role?: "admin" | "super_admin";
 }
 
 export const createUser = async (payload: CreateUserPayload) => {
@@ -43,9 +42,7 @@ export const createUser = async (payload: CreateUserPayload) => {
 
 export interface UpdateUserPayload {
   id: string;
-  email: string;
   name: string;
-  status?: string; 
   password?: string; 
 }
 
@@ -57,14 +54,6 @@ export const updateUser = async (payload: UpdateUserPayload) => {
 
 
 export const deleteUser = async (id: string) => {
-  const response = await axiosInstance.patch(`/user/delete/${id}`);
-  return response.data;
-};
-
-
-export const updateUserStatus = async (id: string, status: string) => {
-  const response = await axiosInstance.put(`/user/update-status/${id}`, {
-    status,
-  });
+  const response = await axiosInstance.delete(`/user/delete/${id}`);
   return response.data;
 };

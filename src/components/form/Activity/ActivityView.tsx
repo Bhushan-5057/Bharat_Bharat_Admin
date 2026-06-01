@@ -9,13 +9,32 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ActivityView({ activity, onClose }: Props) {
-  const [isImageOpen, setIsImageOpen] = useState(false);
+export default function ActivityView({
+  activity,
+  onClose,
+}: Props) {
+  const [isImageOpen, setIsImageOpen] =
+    useState(false);
 
   if (!activity) return null;
 
+  const formatTime = (timeStr?: string) => {
+    if (!timeStr) return "N/A";
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) return timeStr;
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   const imageSrc = activity.data
-    ? `data:image/${activity.file_name?.endsWith(".svg") ? "svg+xml" : "png"};base64,${activity.data}`
+    ? `data:image/${
+        activity.file_name?.endsWith(".svg")
+          ? "svg+xml"
+          : "png"
+      };base64,${activity.data}`
     : "/placeholder.png";
 
   return (
@@ -30,14 +49,18 @@ export default function ActivityView({ activity, onClose }: Props) {
           width={80}
           height={80}
           className="rounded-md object-cover border cursor-pointer"
-          onClick={() => setIsImageOpen(true)} 
+          onClick={() =>
+            setIsImageOpen(true)
+          }
         />
+
         <div>
           <p className="font-medium text-gray-800 dark:text-white">
             {activity.title}
           </p>
         </div>
       </div>
+
       <div className="space-y-2">
         {activity.description && (
           <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -47,12 +70,42 @@ export default function ActivityView({ activity, onClose }: Props) {
             {activity.description}
           </p>
         )}
+
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-semibold text-gray-800 dark:text-white">
+            Venue:
+          </span>{" "}
+          {activity.venue || "N/A"}
+        </p>
+
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-semibold text-gray-800 dark:text-white">
+            Date:
+          </span>{" "}
+          {activity.date || "N/A"}
+        </p>
+
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-semibold text-gray-800 dark:text-white">
+            Start Time:
+          </span>{" "}
+          {formatTime(activity.start_time)}
+        </p>
+
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-semibold text-gray-800 dark:text-white">
+            End Time:
+          </span>{" "}
+          {formatTime(activity.end_time)}
+        </p>
+
         <p className="text-sm text-gray-600 dark:text-gray-300">
           <span className="font-semibold text-gray-800 dark:text-white">
             File name:
           </span>{" "}
           {activity.file_name || "N/A"}
         </p>
+
         <p className="text-sm text-gray-600 dark:text-gray-300">
           <span className="font-semibold text-gray-800 dark:text-white">
             Created By:
@@ -60,16 +113,16 @@ export default function ActivityView({ activity, onClose }: Props) {
           {activity?.creator?.name || "N/A"}
         </p>
       </div>
+
       <div className="pt-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 
-           dark:bg-gray-700 dark:hover:bg-gray-600 
-           text-sm font-medium text-gray-800 dark:text-white"
+          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium text-gray-800 dark:text-white"
         >
           Close
         </button>
       </div>
+
       {isImageOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="relative">
@@ -80,8 +133,11 @@ export default function ActivityView({ activity, onClose }: Props) {
               height={600}
               className="rounded-lg object-contain max-h-[80vh] max-w-[90vw]"
             />
+
             <button
-              onClick={() => setIsImageOpen(false)}
+              onClick={() =>
+                setIsImageOpen(false)
+              }
               className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg text-gray-800 dark:text-white"
             >
               ✕

@@ -11,6 +11,7 @@ export default function IndianFlagLoader() {
         width={200}
         height={200}
         className="chakra-img"
+        priority
       />
     </div>
   );

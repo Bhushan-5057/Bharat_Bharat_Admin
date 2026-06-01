@@ -15,7 +15,7 @@ export default function DeleteEventConfirm({
     loading = false,
 }: DeleteServiceConfirmProps) {
     return (
-        <div className="space-y-4">
+        <div className="relative w-full max-h-[80vh] overflow-y-auto rounded-xl bg-white p-4 dark:bg-gray-900 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                 Delete Event
             </h2>

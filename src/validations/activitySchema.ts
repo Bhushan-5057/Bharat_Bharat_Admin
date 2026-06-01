@@ -1,55 +1,52 @@
 import { z } from "zod";
 
-export const createActivitySchema = z
-  .object({
-    title: z
-      .string()
-      .nonempty("Activity title is required")
-      .min(1, "Title must be at least 1 character")
-      .max(150, "Title cannot be more than 150 characters")
-      .refine((val) => {
-        const normalized = val.normalize("NFC").trim();
+const hasUploadedFile = (value: unknown): boolean => {
+  if (!value) return false;
+  if (Array.isArray(value)) return value.length > 0;
 
-        return /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u.test(normalized);
-      }, "Title must contain only letters with single spaces between words; no leading/trailing spaces or hyphens")
-      .refine((val) => !val.includes("@"), "Title cannot be an email"),
+  if (typeof FileList !== "undefined" && value instanceof FileList) {
+    return value.length > 0;
+  }
 
-    description: z
-      .string()
-      .nonempty("Activity description is required")
-      .refine((val) => val.trim().length === val.length, "Description cannot start or end with spaces"),
+  if (typeof File !== "undefined" && value instanceof File) {
+    return true;
+  }
 
-    file_name: z.any().optional(),
-    existingImage: z.boolean().optional(),
-  })
-  .superRefine((data, ctx) => {
-    const { file_name, existingImage } = data;
+  return false;
+};
 
-    if ((!file_name || file_name.length === 0) && !existingImage) {
+export const createActivitySchema = z.object({
+  title: z.string().nonempty("Activity title is required"),
+  description: z.string().nonempty("Activity description is required"),
+  venue: z.string().nonempty("Venue is required"),
+  date: z.string().nonempty("Date is required"),
+
+  start_time: z.string().nonempty("Start time is required"),
+  end_time: z.string().nonempty("End time is required"),
+
+  file_name: z.any().optional(),
+  existingImage: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (data.start_time && data.end_time) {
+    const start = new Date(`1970-01-01T${data.start_time}`);
+    const end = new Date(`1970-01-01T${data.end_time}`);
+
+    if (end <= start) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Image is required",
-        path: ["file_name"],
+        message: "End time must be greater than start time",
+        path: ["end_time"],
       });
     }
+  }
 
-    if (file_name && file_name.length > 0) {
-      const allowedTypes = [
-        "image/png",
-        "image/jpeg",
-        "image/jpg",
-        "image/svg+xml",
-        "image/gif",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file_name[0].type)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Only image files are allowed",
-          path: ["file_name"],
-        });
-      }
-    }
-  });
+  if (!hasUploadedFile(data.file_name) && !data.existingImage) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Image is required",
+      path: ["file_name"],
+    });
+  }
+});
 
 export type CreateActivityFormData = z.infer<typeof createActivitySchema>;

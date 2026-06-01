@@ -321,9 +321,17 @@ const AppSidebar: React.FC = () => {
                 className="mt-5"
                 width={190}
                 height={60}
+                style={{ width: "auto", height: "auto" }}
               />
             ) : (
-              <Image src={logoSrc} className="mt-5 mb-4" alt="Logo" width={200} height={80} />
+              <Image
+                src={logoSrc}
+                className="mt-5 mb-4"
+                alt="Logo"
+                width={200}
+                height={80}
+                style={{ width: "auto", height: "auto" }}
+              />
             )}
           </Link>
         )}
