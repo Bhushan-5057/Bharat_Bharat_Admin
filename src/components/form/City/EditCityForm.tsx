@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { MESSAGES } from "@/components/common/constants/utlis";
@@ -20,6 +20,17 @@ import {
 } from "@/store/redux/slice/citySlice";
 import { cn } from "@/lib/utils";
 import { City } from "@/types/cityTypes";
+import { getMediaUrl } from "@/utils/mediaUrl";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField } from "@/components/ui/form-field";
+import CityContactPersons from "./CityContactPersons";
+import {
+    applyCityApiFieldErrors,
+    contactsFromCity,
+    minimumCityContacts,
+    toCityContactPayload,
+} from "./cityContacts";
+import { INDIAN_STATES, stateSelectClassName } from "@/constants/indianStates";
 
 
 interface EditCityFormProps {
@@ -43,14 +54,17 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
         setError,
         setValue,
         watch,
+        control,
         formState: { errors, isSubmitting },
     } = useForm<CreateCityFormData>({
         resolver: zodResolver(createCitySchema),
         defaultValues: {
+            state: city.state || "",
             title: city.title,
-            description: city.description,
-            file_name: undefined,
-            existingImage: true,
+            description: city.description || "",
+            file_name: [],
+            existingImage: !!city.images?.some((img) => !!getMediaUrl(img)),
+            contacts: minimumCityContacts(contactsFromCity(city.contacts)),
         },
     });
 
@@ -63,7 +77,7 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
             showSuccess(MESSAGES.ADD_MAIN);
         } catch (err) {
             console.log("error in setting main image", err);
-            showError(MESSAGES.ADD_ERROR);
+            showApiError(err, MESSAGES.ADD_ERROR);
         }
     };
 
@@ -106,7 +120,7 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
                     setMainImageIndex(mainImageIndex - 1);
             } catch (err) {
                 console.log("error in deleting image", err);
-                showError("Failed to delete image");
+                showApiError(err, "Failed to delete image");
             }
         } else {
             const previewIndex = i - existingImages.length;
@@ -131,8 +145,10 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
     };
 
     const onSubmit = async (data: CreateCityFormData) => {
+        const contacts = toCityContactPayload(data.contacts);
         const payload = {
             id: city.id,
+            state: data.state,
             title: data.title,
             description: data.description,
             images: [
@@ -149,6 +165,7 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
                     data: file,
                 })),
             ],
+            contacts,
         };
 
 
@@ -161,39 +178,39 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
             closeModal?.();
         } catch (err) {
             console.log("error in updating city", err);
-            showError(MESSAGES.EDIT_ERROR);
+            applyCityApiFieldErrors(err, setError);
+            showApiError(err, MESSAGES.EDIT_ERROR);
         }
     };
 
     return (
         <form
             onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6 p-6 rounded-xl border border-gray-200 bg-white 
-        dark:border-gray-700 dark:bg-gray-900 max-w-2xl mx-auto w-full overflow-auto"
-            style={{ maxHeight: "90vh" }}
+            className="space-y-6 p-4 sm:p-6 rounded-xl border border-gray-200 bg-white max-w-2xl mx-auto w-full"
         >
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                <Label htmlFor="title" className="sm:w-1/4">Name</Label>
-                <div className="flex-1">
+            <FormField label="State" htmlFor="state" required error={errors.state?.message}>
+                <select id="state" className={stateSelectClassName} {...register("state")}>
+                    <option value="">Select state</option>
+                    {city.state && !INDIAN_STATES.includes(city.state as (typeof INDIAN_STATES)[number]) ? (
+                        <option value={city.state}>{city.state}</option>
+                    ) : null}
+                    {INDIAN_STATES.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                </select>
+            </FormField>
+            <FormField label="Name" htmlFor="title" required error={errors.title?.message}>
                     <Input id="title" {...register("title")} placeholder="Enter city name" />
-                    {errors.title && <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>}
-                </div>
-            </div>
-
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                <Label htmlFor="description" className="sm:w-1/4">Description</Label>
-                <div className="flex-1">
-                    <textarea
+            </FormField>
+            <FormField label="Description" htmlFor="description" required error={errors.description?.message}>
+                    <Textarea
                         id="description"
+                        fieldSize="md"
+                        placeholder="Enter a detailed description of the city"
                         {...register("description")}
-                        placeholder="Enter city description"
-                        className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
                     />
-                    {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>}
-                </div>
-            </div>
+            </FormField>
 
             <div>
                 <Label>Upload Images</Label>
@@ -218,12 +235,7 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
 
                 <div className="mt-4 flex flex-wrap gap-4">
                     {[...existingImages, ...newImagePreviews].map((img, i) => {
-                        let src = "";
-                        if (typeof img === "string") src = img;
-                        else if ("data" in img && img.data)
-                            src = `data:image/png;base64,${img.data}`;
-                        else if ("file_name" in img && img.file_name)
-                            src = `${process.env.NEXT_PUBLIC_API_URL}/uploads/${img.file_name}`;
+                        const src = getMediaUrl(img);
 
                         return (
                             <div key={i} className="relative w-28 group">
@@ -264,6 +276,12 @@ export default function EditCityForm({ city, closeModal }: EditCityFormProps) {
                     })}
                 </div>
             </div>
+
+            <CityContactPersons
+                control={control}
+                register={register}
+                errors={errors}
+            />
 
             <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>

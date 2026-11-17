@@ -7,8 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -17,22 +19,24 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import Image from "next/image";
 import {  deletePhoto, Photo } from "@/store/api/photoApi";
-import { PhotoUploadForm } from "../form/PhotoUploadForm/PhotoUploadForm";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
 import { getPhotos } from "@/store/redux/slice/photoSlice";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 
 export default function PhotosTableOne() {
   const { isOpen, openModal, closeModal } = useModal();
+  const router = useRouter();
 
 
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const { photos, loading, error } = useSelector((state: RootState) => state.photos);
@@ -60,15 +64,13 @@ export default function PhotosTableOne() {
   };
 
   const handleView = (photo: Photo) => {
-    setSelectedPhoto(photo);
-    setModalMode("view");
-    openModal();
+    if (!photo.id) return;
+    router.push(`/gallery/photos/${photo.id}`);
   };
 
   const handleEdit = (photo: Photo) => {
-    setSelectedPhoto(photo);
-    setModalMode("edit");
-    openModal();
+    if (!photo.id) return;
+    router.push(`/gallery/photos/${photo.id}/edit`);
   };
 
   const handleDelete = (photo: Photo) => {
@@ -87,23 +89,14 @@ export default function PhotosTableOne() {
       closeModal();
     } catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR || "Failed to delete photo";
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR || "Failed to delete photo");
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err) {
-      return (err as { message: string }).message;
-    }
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -112,6 +105,8 @@ export default function PhotosTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">
                   Image
                 </TableCell>
@@ -131,6 +126,8 @@ export default function PhotosTableOne() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell className="px-5 py-4">
                       <div className="w-16 h-16 bg-gray-300 rounded-md animate-pulse"></div>
                     </TableCell>
@@ -147,30 +144,37 @@ export default function PhotosTableOne() {
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-red-500">
+                  <TableCell colSpan={6} className="text-center py-6 text-red-500">
                     Error: {renderErrorMessage(error)}
                   </TableCell>
                 </TableRow>
               ) : photos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                     No photos found.
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedPhotos.map((photo) => (
+                paginatedPhotos.map((photo, index) => (
                   <TableRow key={photo.id || `photo-${photo.file_name}`}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.photo)} />
+                    <TableIdCell id={photo.id} />
                     <TableCell className="px-5 py-4">
+                      {getMediaUrl(photo) ? (
                       <div className="relative w-16 h-16">
                         <Image
-                          src={`data:image/png;base64,${photo.data}`}
+                          src={getMediaUrl(photo)}
                           alt={photo.file_name || "Photo"}
                           fill
                           style={{ objectFit: "cover" }}
                           className="rounded-md border"
                           priority
+                          unoptimized
                         />
                       </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No image</span>
+                      )}
                     </TableCell>
                     <TableCell className="px-5 py-4">{photo.file_name}</TableCell>
                     <TableCell className="px-5 py-4">{photo.creator?.name}</TableCell>
@@ -232,37 +236,6 @@ export default function PhotosTableOne() {
 
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="bg-white p-6 dark:bg-gray-900 rounded-lg">
-          {modalMode === "view" && selectedPhoto && (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Photo Details</h3>
-              <p><strong>File:</strong> {selectedPhoto.file_name}</p>
-              <p><strong>Created by:</strong> {selectedPhoto.creator?.name}</p>
-              <div className="relative w-full h-80 mt-4 rounded-lg overflow-hidden">
-                <Image
-                  src={`data:image/png;base64,${selectedPhoto.data}`}
-                  alt={selectedPhoto.file_name || "Photo"}
-                  fill
-                  style={{ objectFit: "cover" }}
-                  className="rounded-lg"
-                  priority
-                />
-              </div>
-            </div>
-          )}
-
-         {modalMode === "edit" && selectedPhoto && (
-           <PhotoUploadForm
-            mode="edit"
-            initialPhoto={selectedPhoto} 
-            onSuccess={() => {
-            closeModal();   
-            dispatch(getPhotos());  
-     
-    }}
-  />
-
-           )}
-
           {modalMode === "delete" && selectedPhoto && (
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-4">Delete Photo?</h3>

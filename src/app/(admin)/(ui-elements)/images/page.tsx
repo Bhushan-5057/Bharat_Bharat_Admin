@@ -7,9 +7,9 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Koli Infotech | Admin - Dashboard",
+  title: "Bharat Bharti trust | Admin - Dashboard",
   description:
-    " Empowering businesses through innovative web development and digital excellence in Surat, Gujarat, India.",
+    "Bharat Bharti trust in India. for more information visit our website.",
  
 };
 

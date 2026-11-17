@@ -7,6 +7,7 @@ import {
     TableHeader,
     TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
@@ -18,33 +19,30 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import { Modal } from "../ui/modal";
 import Image from "next/image";
+import { getMediaUrl } from "@/utils/mediaUrl";
 import DeleteEventConfirm from "../form/event/DeleteConfirm";
 import { City } from "@/types/cityTypes";
 import { deleteCityThunk, fetchAllCitiesThunk } from "@/store/redux/slice/citySlice";
 import { useRouter } from "next/navigation";
-import EditCityForm from "../form/City/EditCityForm";
-
 
 
 export default function CityTableOne() {
     const dispatch = useDispatch<AppDispatch>();
+    const router = useRouter();
     const { isOpen, openModal, closeModal } = useModal();
 
     const [selectedCity, setSelectedCity] = useState<City | null>(null);
-    const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(
-        null
-    );
+    const [modalMode, setModalMode] = useState<"delete" | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
     const { cities = [], loading, error } = useSelector(
         (state: RootState) => state.cities
     );
-
-    const router = useRouter();
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
@@ -67,10 +65,9 @@ export default function CityTableOne() {
         router.push(`/cities/${city.id}`);
     };
 
-    const handleEdit = (event: City) => {
-        setSelectedCity(event);
-        setModalMode("edit");
-        openModal();
+    const handleEdit = (city: City) => {
+        if (!city.id) return;
+        router.push(`/cities/${city.id}/edit`);
     };
 
     const handleDelete = (event: City) => {
@@ -96,22 +93,14 @@ export default function CityTableOne() {
             closeModal();
         } catch (err: unknown) {
             console.error("Delete failed:", err);
-            const errorMessage =
-                err && typeof err === "object" && "message" in err
-                    ? (err as { message: string }).message
-                    : MESSAGES.DELETE_ERROR;
-            showError(errorMessage);
+            showApiError(err, MESSAGES.DELETE_ERROR);
         } finally {
             setDeleteLoading(false);
         }
     };
 
-    const renderErrorMessage = (err: unknown) => {
-        if (typeof err === "string") return err;
-        if (err && typeof err === "object" && "message" in err)
-            return (err as { message: string }).message;
-        return JSON.stringify(err);
-    };
+    const renderErrorMessage = (err: unknown) =>
+        getApiErrorMessage(err, "Something went wrong");
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -120,6 +109,9 @@ export default function CityTableOne() {
                     <Table>
                         <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                             <TableRow>
+                                <TableSerialHeader />
+                                <TableIdHeader />
+                                <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">State</TableCell>
                                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Title</TableCell>
                                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Description</TableCell>
                                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Image</TableCell>
@@ -132,6 +124,11 @@ export default function CityTableOne() {
                             {loading
                                 ? [...Array(itemsPerPage)].map((_, i) => (
                                     <TableRow key={`skeleton-${i}`}>
+                                        <TableSerialSkeletonCell />
+                                        <TableIdSkeletonCell />
+                                        <TableCell>
+                                            <div className="h-4 w-28 rounded bg-gray-200 animate-pulse"></div>
+                                        </TableCell>
                                         <TableCell>
                                             <div className="h-4 w-32 rounded bg-gray-200 animate-pulse"></div>
                                         </TableCell>
@@ -170,7 +167,10 @@ export default function CityTableOne() {
                                             </TableRow>
                                         )
                                         : paginatedCities.map((city, index: number) => (
-                                            <TableRow key={index}>
+                                            <TableRow key={city.id ?? index}>
+                                                <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.city)} />
+                                                <TableIdCell id={city.id} />
+                                                <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{city.state || "—"}</TableCell>
                                                 <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{city.title
                                                     ? city.title.length > 30
                                                         ? city.title.slice(0, 30) + "..."
@@ -192,11 +192,9 @@ export default function CityTableOne() {
                                                                 <div key={i} className="relative w-12 h-12">
                                                                     <Image
                                                                         src={
-                                                                            img.data
-                                                                                ? `data:image/png;base64,${img.data}`
-                                                                                : `${process.env.NEXT_PUBLIC_API_URL}/uploads/${img.file_name}`
+                                                                            getMediaUrl(img) || "/placeholder.png"
                                                                         }
-                                                                        alt={city.title || "Education Image"}
+                                                                        alt={city.title || "City Image"}
                                                                         fill
                                                                         className="rounded-md object-cover"
                                                                     />
@@ -259,9 +257,6 @@ export default function CityTableOne() {
 
             <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
                 <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-                    {modalMode === "edit" && selectedCity && (
-                        <EditCityForm city={selectedCity} closeModal={closeModal} />
-                    )}
                     {modalMode === "delete" && selectedCity && (
                         <DeleteEventConfirm
                             onConfirm={handleDeleteConfirm}

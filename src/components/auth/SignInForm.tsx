@@ -5,7 +5,7 @@ import { EyeCloseIcon, EyeIcon } from "@/icons";
 import Input from "@/app/types/InputField";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
@@ -58,7 +58,7 @@ const SignInForm = () => {
       showSuccess("Login successful!");
       router.replace("/");
     } else {
-      showError((result.payload as string) || "Invalid credentials!");
+      showApiError(result.payload, "Invalid credentials!");
     }
   };
 

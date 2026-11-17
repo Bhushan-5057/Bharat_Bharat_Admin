@@ -7,8 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -18,16 +20,19 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
 
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import { deleteBanner, fetchAllBanners } from "@/store/api/bannerApi";
-import { FileUpload } from "@/components/ui/fileupload/file-upload";
 import Image from "next/image";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 interface Banner {
   id: number;
   title: string;
   file_name: string;
+  url:string;
+  cloudinary_url?: string | null;
   description?: string;
   status?: string;
   data: string;
@@ -39,13 +44,14 @@ interface Banner {
 
 export default function BannerTableOne() {
   const { isOpen, openModal, closeModal } = useModal();
+  const router = useRouter();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<unknown>(null);
 
 
   const [selectedBanner, setSelectedBanner] = useState<Banner | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(
+  const [modalMode, setModalMode] = useState<"delete" | null>(
     null
   );
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
@@ -91,15 +97,13 @@ useEffect(() => {
 }, [loadBanners]);
 
   const handleView = (banner: Banner) => {
-    setSelectedBanner(banner);
-    setModalMode("view");
-    openModal();
+    if (!banner.id) return;
+    router.push(`/banners/${banner.id}`);
   };
 
   const handleEdit = (banner: Banner) => {
-    setSelectedBanner(banner);
-    setModalMode("edit");
-    openModal();
+    if (!banner.id) return;
+    router.push(`/banners/${banner.id}/edit`);
   };
 
   const handleDelete = (banner: Banner) => {
@@ -119,11 +123,7 @@ useEffect(() => {
     }
     catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     }
 
     finally {
@@ -131,13 +131,8 @@ useEffect(() => {
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err) {
-      return (err as { message: string }).message;
-    }
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -146,6 +141,8 @@ useEffect(() => {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white ">Image</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">File Name</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Created By</TableCell>
@@ -158,6 +155,8 @@ useEffect(() => {
 
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell className="px-5 py-4">
                       <div className="w-16 h-16 bg-gray-300 rounded-md animate-pulse"></div>
                     </TableCell>
@@ -192,12 +191,14 @@ useEffect(() => {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedBanners.map((banner) => (
+                paginatedBanners.map((banner, index) => (
                   <TableRow key={banner.id}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.banner)} />
+                    <TableIdCell id={banner.id} />
                     <TableCell className="px-5 py-4">
                       <div className="relative w-16 h-16">
                         <Image
-                          src={`data:image/png;base64,${banner.data}`}
+                          src={getMediaUrl(banner)}
                           alt={banner.title || "Banner image"}
                           fill
                           style={{ objectFit: "cover" }}
@@ -269,36 +270,6 @@ useEffect(() => {
 
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="bg-white p-6 dark:bg-gray-900 rounded-lg">
-          {modalMode === "view" && selectedBanner && (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Banner Details</h3>
-              <p><strong>File:</strong> {selectedBanner.file_name}</p>
-              <p><strong>Created by:</strong> {selectedBanner.creator.name}</p>
-              <div className="relative w-full h-80 mt-4 rounded-lg overflow-hidden">
-                <Image
-                  src={`data:image/png;base64,${selectedBanner.data}`}
-                  alt={selectedBanner?.title || "Banner image"}
-                  fill
-                  style={{ objectFit: "cover" }}
-                  className="rounded-lg"
-                  priority
-                />
-
-              </div>
-
-            </div>
-          )}
-
-          {modalMode === "edit" && selectedBanner && (
-            <FileUpload
-              mode="edit"
-              initialBanner={selectedBanner}
-              onSuccess={() => {
-                closeModal();
-                loadBanners();
-              }}
-            />
-          )}
           {modalMode === "delete" && selectedBanner && (
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-4">Delete Banner?</h3>

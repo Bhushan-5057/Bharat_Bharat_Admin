@@ -4,14 +4,13 @@ import { motion } from "motion/react";
 import { useDropzone } from "react-dropzone";
 import { z } from "zod";
 import { imageSchema } from "@/validations/imageSchema";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showApiSuccess } from "@/lib/utils/toast";
 import { uploadBanner, updateBanner } from "@/store/api/bannerApi";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { UploadCloud } from "lucide-react";
-
-
+import { getMediaUrl } from "@/utils/mediaUrl";
 const mainVariant = { initial: { x: 0, y: 0 }, animate: { x: 20, y: -20, opacity: 0.9 } };
 
 
@@ -25,6 +24,8 @@ interface FileUploadProps {
     description?: string;
     status?: string;
     data?: string;
+    url?: string | null;
+    cloudinary_url?: string | null;
     file_name?: string;
   };
   onSuccess?: () => void;
@@ -88,29 +89,29 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const description = initialBanner?.description;
       const status = initialBanner?.status;
 
+      let result;
       if (mode === "edit" && initialBanner) {
-        await updateBanner(initialBanner.id, {
+        result = await updateBanner(initialBanner.id, {
           title,
           description,
           status,
           file: files[0],
         });
       } else {
-        await uploadBanner(files[0], { title, description, status });
+        result = await uploadBanner(files[0], { title, description, status });
       }
 
-      showSuccess(mode === "edit" ? MESSAGES.EDIT_SUCCESS : MESSAGES.ADD_SUCCESS);
+      showApiSuccess(
+        result,
+        mode === "edit" ? MESSAGES.EDIT_SUCCESS : MESSAGES.ADD_SUCCESS
+      );
       router.push("/banner-table");
       onSuccess?.();
       setFiles([]);
     }
     catch (err: unknown) {
       console.error("Upload failed", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : "Failed to upload banner";
-      showError(errorMessage);
+      showApiError(err, "Failed to upload banner");
     }
 
     finally {
@@ -132,7 +133,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [router]);
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6 space-y-6">
+    <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
       <h2 className="text-xl font-semibold text-center text-neutral-800 dark:text-neutral-200">
         Upload Form
       </h2>
@@ -179,15 +180,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                     </div>
                   </motion.div>
                 ))
-              ) : mode === "edit" && initialBanner?.data ? (
-                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Current Image</p>
-                  <Image
-                    src={`data:image/png;base64,${initialBanner.data}`}
-                    alt={initialBanner.title || "Banner image"}
-                    fill
-                    className="object-cover rounded-md border"
-                  />
+              ) : mode === "edit" && getMediaUrl(initialBanner) ? (
+                <div className="w-full">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 text-center">
+                    Current Image
+                  </p>
+
+                  <div className="relative w-full aspect-[16/6] overflow-hidden rounded-md border bg-gray-100 dark:bg-neutral-800">
+                    <Image
+                      src={getMediaUrl(initialBanner)}
+                      alt={initialBanner?.title ?? "Banner image"}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 600px"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
               ) : (
                 <motion.div
@@ -214,7 +221,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       <button
         type="submit"
         disabled={uploading}
-        className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-md shadow-md"
+        className="w-fit mx-auto py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-md shadow-md flex items-center justify-center"
       >
         {uploading ? "Uploading..." : "Upload Files"}
       </button>

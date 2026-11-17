@@ -3,117 +3,149 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { OfficeBearer } from "@/types/officeBearerTypes";
+import { getMediaUrl } from "@/utils/mediaUrl";
+import ImagePreviewModal from "@/components/common/ImagePreviewModal";
 
 interface Props {
   bearer: OfficeBearer | null;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-export default function OfficeBearerView({ bearer, onClose }: Props) {
-  const [isImageOpen, setIsImageOpen] = useState(false);
+export default function OfficeBearerView({ bearer }: Props) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   if (!bearer) return null;
 
-  const imageSrc = bearer.data
-    ? `data:image/png;base64,${bearer.data}`
-    : bearer.file_name
-    ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/${bearer.file_name}`
-    : "/placeholder.png";
+  const imageSrc = getMediaUrl(bearer) || null;
 
   return (
-    <div className="space-y-4 p-4 max-w-md mx-auto bg-white dark:bg-black dark:text-white rounded-lg overflow-auto">
-      {/* Thumbnail + Info */}
-      <div className="flex items-center gap-4">
-        <Image
-          src={imageSrc}
-          alt={bearer.title}
-          width={80}
-          height={80}
-          className="rounded-[25%] object-cover border cursor-pointer"
-          onClick={() => setIsImageOpen(true)} // open modal
-        />
-        <div className="flex flex-col">
-          <p className="font-medium text-gray-800 dark:text-white">{bearer.title}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-300">{bearer.designation}</p>
+    <>
+      <div className="relative w-full rounded-2xl bg-white p-5 dark:bg-gray-900 sm:p-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+            {bearer.title}
+          </h2>
+          {bearer.designation && (
+            <p className="mt-1 text-base text-gray-500 dark:text-gray-400">
+              {bearer.designation}
+            </p>
+          )}
         </div>
-      </div>
 
-      {/* Quotes */}
-      {bearer.quotes && (
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">Quotes:</span>{" "}
-          {bearer.quotes}
-        </p>
-      )}
+        <div className="mt-6 space-y-4">
+          {bearer.quotes && (
+            <div>
+              <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                Quotes
+              </p>
+              <p className="mt-1 whitespace-pre-wrap break-words leading-7 text-gray-600 dark:text-gray-300">
+                {bearer.quotes}
+              </p>
+            </div>
+          )}
 
-      {/* Social Links */}
-      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-        {bearer.gmail && (
-          <p>
-            <span className="font-semibold text-gray-800 dark:text-white">Email:</span>{" "}
-            {bearer.gmail}
-          </p>
-        )}
-        {bearer.facebook && (
-          <p>
-            <span className="font-semibold text-gray-800 dark:text-white">Facebook:</span>{" "}
-            <a
-              href={bearer.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              {bearer.facebook}
-            </a>
-          </p>
-        )}
-        {bearer.twitter && (
-          <p>
-            <span className="font-semibold text-gray-800 dark:text-white">Twitter:</span>{" "}
-            <a
-              href={bearer.twitter}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              {bearer.twitter}
-            </a>
-          </p>
-        )}
-      </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Designation
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {bearer.designation || "N/A"}
+              </p>
+            </div>
 
-      {/* Footer */}
-      <div className="pt-2 flex justify-end">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 
-                     dark:bg-gray-700 dark:hover:bg-gray-600 
-                     text-sm font-medium text-gray-800 dark:text-white"
-        >
-          Close
-        </button>
-      </div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Email
+              </p>
+              <p className="mt-1 break-all text-base font-medium text-gray-800 dark:text-white">
+                {bearer.gmail || "N/A"}
+              </p>
+            </div>
 
-      {/* Image Modal */}
-      {isImageOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="relative">
-            <Image
-              src={imageSrc}
-              alt="Expanded Office Bearer"
-              width={600}
-              height={600}
-              className="rounded-lg object-contain max-h-[80vh] max-w-[90vw]"
-            />
-            <button
-              onClick={() => setIsImageOpen(false)}
-              className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg text-gray-800 dark:text-white"
-            >
-              ✕
-            </button>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Facebook
+              </p>
+              {bearer.facebook ? (
+                <a
+                  href={bearer.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block break-all text-base font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {bearer.facebook}
+                </a>
+              ) : (
+                <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                  N/A
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Twitter
+              </p>
+              {bearer.twitter ? (
+                <a
+                  href={bearer.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block break-all text-base font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {bearer.twitter}
+                </a>
+              ) : (
+                <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                  N/A
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800 sm:col-span-2">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Created By
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {bearer.creator?.name || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-lg font-semibold text-gray-800 dark:text-white">
+              Image
+            </p>
+            {imageSrc ? (
+              <button
+                type="button"
+                onClick={() => setSelectedImage(imageSrc)}
+                className="relative mt-3 h-48 w-full max-w-sm cursor-pointer overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 transition hover:opacity-90"
+                aria-label={`View ${bearer.title} image`}
+              >
+                <Image
+                  src={imageSrc}
+                  alt={bearer.title}
+                  fill
+                  unoptimized
+                  className="object-contain bg-gray-50 dark:bg-gray-800"
+                />
+              </button>
+            ) : (
+              <div className="mt-3 flex h-48 w-full max-w-sm items-center justify-center rounded-xl bg-gray-200 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                No Image
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      <ImagePreviewModal
+        src={selectedImage}
+        alt={bearer.title}
+        onClose={() => setSelectedImage(null)}
+      />
+    </>
   );
 }

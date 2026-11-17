@@ -7,8 +7,10 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField, FormSection } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import Image from "next/image";
 import { editBlog, getAllBlogs } from "@/store/redux/slice/blogSlice";
 import { useRouter } from "next/navigation";
@@ -16,6 +18,7 @@ import { Blog } from "@/types/blogTypes";
 import { CreateBlogFormData, createBlogSchema } from "@/validations/blogSchema";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { X } from "lucide-react";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 type EditBlogFormProps = {
     blog: Blog;
@@ -27,11 +30,7 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [preview, setPreview] = useState<string | null>(() => {
-        if (blog.data) return `data:image/png;base64,${blog.data}`;
-        if (blog.file_name) return `${process.env.NEXT_PUBLIC_API_URL}/uploads/${blog.file_name}`;
-        return null;
-    });
+    const [preview, setPreview] = useState<string | null>(() => getMediaUrl(blog) || null);
 
     const {
         register,
@@ -51,7 +50,7 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
             tags: blog.tags,
             category: blog.category,
             file_name: undefined,
-            existingImage: !!blog.data || !!blog.file_name,
+            existingImage: !!getMediaUrl(blog),
         },
     });
 
@@ -62,18 +61,16 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
             setPreview(URL.createObjectURL(watchFile[0]));
             setValue("existingImage", false);
         } else {
-            if (blog.data) {
-                setPreview(`data:image/png;base64,${blog.data}`);
-                setValue("existingImage", true);
-            } else if (blog.file_name) {
-                setPreview(`${process.env.NEXT_PUBLIC_API_URL}/uploads/${blog.file_name}`);
+            const existingSrc = getMediaUrl(blog);
+            if (existingSrc) {
+                setPreview(existingSrc);
                 setValue("existingImage", true);
             } else {
                 setPreview(null);
                 setValue("existingImage", false);
             }
         }
-    }, [watchFile, blog.data, blog.file_name, setValue]);
+    }, [watchFile, blog, setValue]);
 
     const handleFileChange = (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -98,7 +95,7 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
     const onSubmit: SubmitHandler<CreateBlogFormData> = async (data) => {
         try {
             if (!data.file_name || data.file_name.length === 0) {
-                data.existingImage = !!blog.data || !!blog.file_name;
+                data.existingImage = !!getMediaUrl(blog);
             }
 
             const payload = {
@@ -122,66 +119,60 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
             setPreview(null);
         } catch (err) {
             console.error(err);
-            showError(MESSAGES.EDIT_ERROR);
+            showApiError(err, MESSAGES.EDIT_ERROR);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-            <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" {...register("title")} />
-                {errors.title && <p className="text-red-600 text-sm">{errors.title.message}</p>}
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
+            <FormSection title="Basic information">
+            <FormField label="Title" htmlFor="title" required error={errors.title?.message}>
+                <Input id="title" placeholder="Enter blog title" {...register("title")} />
+            </FormField>
+            <FormField label="Slug" htmlFor="slug" required error={errors.slug?.message}>
+                <Input id="slug" placeholder="Enter URL slug" {...register("slug")} />
+            </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Category" htmlFor="category" error={errors.category?.message}>
+                    <Input id="category" placeholder="Enter category" {...register("category")} />
+                </FormField>
+                <FormField label="Tags" htmlFor="tags" hint="Comma-separated" error={errors.tags?.message}>
+                    <Input id="tags" placeholder="education, culture, news" {...register("tags")} />
+                </FormField>
             </div>
+            </FormSection>
 
-            <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
-                <Input id="slug" {...register("slug")} />
-                {errors.slug && <p className="text-red-600 text-sm">{errors.slug.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="meta_title">Meta Title</Label>
-                <Input id="meta_title" {...register("meta_title")} />
-                {errors.meta_title && <p className="text-red-600 text-sm">{errors.meta_title.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="meta_description">Meta Description</Label>
-                <textarea
+            <FormSection title="SEO">
+            <FormField label="Meta title" htmlFor="meta_title" error={errors.meta_title?.message}>
+                <Input id="meta_title" placeholder="Enter meta title" {...register("meta_title")} />
+            </FormField>
+            <FormField label="Meta description" htmlFor="meta_description" error={errors.meta_description?.message}>
+                <Textarea
                     id="meta_description"
+                    fieldSize="sm"
+                    placeholder="Enter a short summary for search results"
                     {...register("meta_description")}
-                    className="w-full border rounded-md p-2 text-sm"
                 />
-                {errors.meta_description && (
-                    <p className="text-red-600 text-sm">{errors.meta_description.message}</p>
-                )}
-            </div>
+            </FormField>
+            </FormSection>
 
-            <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
-                <textarea
+            <FormSection title="Content">
+            <FormField label="Content" htmlFor="content" required error={errors.content?.message}>
+                <Textarea
                     id="content"
+                    fieldSize="lg"
+                    placeholder="Write the full blog content"
                     {...register("content")}
-                    className="w-full border rounded-md p-2 text-sm"
                 />
-                {errors.content && <p className="text-red-600 text-sm">{errors.content.message}</p>}
-            </div>
+            </FormField>
+            </FormSection>
 
+            <FormSection title="Media">
             <div className="space-y-2">
-                <Label htmlFor="tags">Tags</Label>
-                <Input id="tags" {...register("tags")} />
-                {errors.tags && <p className="text-red-600 text-sm">{errors.tags.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Input id="category" {...register("category")} />
-                {errors.category && <p className="text-red-600 text-sm">{errors.category.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label>Blog Image</Label>
+                <Label>Blog image</Label>
+                <p className="text-xs text-gray-500">
+                    {getMediaUrl(blog) && !watch("file_name")?.length ? "Current saved image. Click to replace." : "Upload or replace the blog image."}
+                </p>
                 <div
                     className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 cursor-pointer hover:border-blue-500 transition"
                     onClick={() => fileInputRef.current?.click()}
@@ -220,10 +211,11 @@ export default function EditBlogForm({ blog, onClose }: EditBlogFormProps) {
                 </div>
                 {errors.file_name && <p className="text-red-600 text-sm">{errors.file_name.message}</p>}
             </div>
+            </FormSection>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
                 <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Update Blog"}
+                    {isSubmitting ? "Saving..." : "Save"}
                 </Button>
             </div>
         </form>

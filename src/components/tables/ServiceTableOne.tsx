@@ -7,10 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import {
   Pagination,
   PaginationContent,
@@ -18,7 +20,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import {
   deleteServiceThunk,
@@ -27,18 +30,17 @@ import {
 import { Service } from "@/types/serviceTypes";
 import { Modal } from "../ui/modal";
 import DeleteServiceConfirm from "../form/Service/DeleteConfirm";
-import ServiceView from "../form/Service/ServiceView";
-import EditServiceForm from "../form/Service/EditServiceForm";
 import Image from "next/image";
+import { getMediaUrl } from "@/utils/mediaUrl";
+import { EmptyState } from "@/components/ui/empty-state";
  
 export default function ServiceTableOne() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
  
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(
-    null
-  );
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
  
   const { services = [], loading, error } = useSelector(
@@ -62,15 +64,13 @@ export default function ServiceTableOne() {
   }, [dispatch]);
  
   const handleView = (service: Service) => {
-    setSelectedService(service);
-    setModalMode("view");
-    openModal();
+    if (!service.id) return;
+    router.push(`/services/${service.id}`);
   };
  
   const handleEdit = (service: Service) => {
-    setSelectedService(service);
-    setModalMode("edit");
-    openModal();
+    if (!service.id) return;
+    router.push(`/services/${service.id}/edit`);
   };
  
   const handleDelete = (service: Service) => {
@@ -97,22 +97,14 @@ export default function ServiceTableOne() {
       closeModal();
     } catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     } finally {
       setDeleteLoading(false);
     }
   };
  
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err)
-      return (err as { message: string }).message;
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
  
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -121,6 +113,8 @@ export default function ServiceTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Title</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Description</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Image</TableCell>
@@ -132,6 +126,8 @@ export default function ServiceTableOne() {
               {loading
                 ? [...Array(itemsPerPage)].map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell>
                       <div className="h-4 w-32 rounded bg-gray-200 animate-pulse"></div>
                     </TableCell>
@@ -153,7 +149,7 @@ export default function ServiceTableOne() {
                 : error
                   ? (
                     <TableRow key="error-row">
-                      <TableCell className="text-center py-6 text-red-500" colSpan={4}>
+                      <TableCell className="text-center py-6 text-red-500" colSpan={6}>
                         Error: {renderErrorMessage(error)}
                       </TableCell>
                     </TableRow>
@@ -161,13 +157,18 @@ export default function ServiceTableOne() {
                   : services.length === 0
                     ? (
                       <TableRow key="no-services-row">
-                        <TableCell className="text-center py-6 text-gray-500" colSpan={4}>
-                          No services found.
-                        </TableCell>
+                      <TableCell className="px-5 py-8" colSpan={6}>
+                        <EmptyState
+                          title="No services found"
+                          description="Add a service to show it on the public site."
+                        />
+                      </TableCell>
                       </TableRow>
                     )
                     : paginatedServices.map((service, index) => (
                       <TableRow key={service.id || `service-${index}`}>
+                        <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.service)} />
+                        <TableIdCell id={service.id} />
                         <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{service.title}</TableCell>
                         <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
                           {service.description
@@ -177,11 +178,10 @@ export default function ServiceTableOne() {
                             : "—"}
                         </TableCell>
                         <TableCell className="px-5 py-4">
-                          {service.data ? (
+                          {getMediaUrl(service) ? (
                             <div className="relative w-12 h-12 rounded-md overflow-hidden">
                               <Image
-                                src={`data:image/${service.file_name?.endsWith(".svg") ? "svg+xml" : "png"
-                                  };base64,${service.data}`}
+                                src={getMediaUrl(service)}
                                 alt={service.title}
                                 fill
                                 className="object-cover"
@@ -238,12 +238,6 @@ export default function ServiceTableOne() {
  
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-          {modalMode === "view" && selectedService && (
-            <ServiceView service={selectedService} onClose={closeModal} />
-          )}
-          {modalMode === "edit" && selectedService && (
-            <EditServiceForm service={selectedService} closeModal={closeModal} />
-          )}
           {modalMode === "delete" && selectedService && (
             <DeleteServiceConfirm
               onConfirm={handleDeleteConfirm}

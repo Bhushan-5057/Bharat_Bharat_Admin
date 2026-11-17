@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAllVideos,
@@ -6,7 +7,6 @@ import {
   deleteVideo,
   updateVideoApi,
 } from "@/store/api/videoApi";
-import { AxiosError } from "axios";
 
 export interface Video {
   id: string;
@@ -46,8 +46,7 @@ export const getVideos = createAsyncThunk<
   try {
     return await fetchAllVideos(params);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch videos");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch videos"));
   }
 });
 
@@ -60,8 +59,7 @@ export const getVideoById = createAsyncThunk<
   try {
     return await fetchVideoById(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch video");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch video"));
   }
 });
 
@@ -74,8 +72,7 @@ export const addVideo = createAsyncThunk<
   try {
     return await uploadVideo(payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to create video");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to create video"));
   }
 });
 
@@ -89,8 +86,7 @@ export const removeVideo = createAsyncThunk<
   try {
     await deleteVideo(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to delete video");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete video"));
   }
 });
 
@@ -106,8 +102,7 @@ export const updateVideo = createAsyncThunk<
       const payload = { youtube_url, description };
       return await updateVideoApi(id, payload); 
     } catch (err) {
-      const error = err as AxiosError<{ message?: string }>;
-      return rejectWithValue(error.response?.data?.message || "Failed to update video");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to update video"));
     }
   }
 );

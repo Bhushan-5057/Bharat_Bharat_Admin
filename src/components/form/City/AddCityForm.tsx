@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { MESSAGES } from "@/components/common/constants/utlis";
@@ -17,6 +19,9 @@ import {
     fetchAllCitiesThunk,
 } from "@/store/redux/slice/citySlice";
 import { cn } from "@/lib/utils";
+import CityContactPersons from "./CityContactPersons";
+import { applyCityApiFieldErrors, minimumCityContacts, toCityContactPayload } from "./cityContacts";
+import { INDIAN_STATES, stateSelectClassName } from "@/constants/indianStates";
 
 export default function AddCityForm({
     closeModal,
@@ -34,9 +39,14 @@ export default function AddCityForm({
         setError,
         watch,
         setValue,
+        control,
         formState: { errors, isSubmitting },
     } = useForm<CreateCityFormData>({
         resolver: zodResolver(createCitySchema),
+        defaultValues: {
+            state: "",
+            contacts: minimumCityContacts(),
+        },
     });
 
     const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,73 +87,60 @@ export default function AddCityForm({
         }
 
         try {
+            const contacts = toCityContactPayload(data.contacts);
             const payload = {
+                state: data.state || "",
                 title: data.title || "",
                 description: data.description || "",
                 file_name: data.file_name,
                 mainImageIndex: mainImageIndex ?? 0,
+                contacts,
             };
 
             await dispatch(createCityThunk(payload)).unwrap();
             await dispatch(fetchAllCitiesThunk());
 
             showSuccess(MESSAGES.ADD_SUCCESS);
-            reset();
+            reset({ state: "", contacts: minimumCityContacts() });
             setImagePreviews([]);
             setMainImageIndex(null);
             closeModal?.();
         } catch (err: unknown) {
             console.error("Add city failed:", err);
-            const errorMessage =
-                err && typeof err === "object" && "message" in err
-                    ? (err as { message: string }).message
-                    : MESSAGES.ADD_ERROR;
-            showError(errorMessage);
+            applyCityApiFieldErrors(err, setError);
+            showApiError(err, MESSAGES.ADD_ERROR);
         }
     };
 
     return (
         <form
             onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6 p-6 rounded-xl border border-gray-200 bg-white 
-        dark:border-gray-700 dark:bg-gray-900 max-w-2xl mx-auto w-full"
+            className="space-y-6 p-4 sm:p-6 rounded-xl border border-gray-200 bg-white max-w-2xl mx-auto w-full"
         >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                <Label htmlFor="title" className="sm:w-1/4">
-                    Name
-                </Label>
-                <div className="flex-1">
+            <FormField label="State" htmlFor="state" required error={errors.state?.message}>
+                <select id="state" className={stateSelectClassName} {...register("state")}>
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                </select>
+            </FormField>
+            <FormField label="Name" htmlFor="title" required error={errors.title?.message}>
                     <Input
                         id="title"
-                        placeholder="Enter city Name"
+                        placeholder="Enter city name"
                         {...register("title")}
-                        className="mt-1 w-full"
+                        className="w-full"
                     />
-                    {errors.title && (
-                        <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
-                    )}
-                </div>
-            </div>
-
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                <Label htmlFor="description" className="sm:w-1/4">
-                    Description
-                </Label>
-                <div className="flex-1">
-                    <textarea
+            </FormField>
+            <FormField label="Description" htmlFor="description" required error={errors.description?.message}>
+                    <Textarea
                         id="description"
-                        placeholder="Enter city description"
-                        className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        fieldSize="md"
+                        placeholder="Enter a detailed description of the city"
                         {...register("description")}
                     />
-                    {errors.description && (
-                        <p className="text-sm text-red-500 mt-1">
-                            {errors.description.message}
-                        </p>
-                    )}
-                </div>
-            </div>
+            </FormField>
 
             <div>
                 <Label>Upload Images</Label>
@@ -225,6 +222,12 @@ export default function AddCityForm({
                     ))}
                 </div>
             </div>
+
+            <CityContactPersons
+                control={control}
+                register={register}
+                errors={errors}
+            />
 
             <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>

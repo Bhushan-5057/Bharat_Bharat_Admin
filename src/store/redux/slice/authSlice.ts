@@ -1,6 +1,6 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import axiosInstance from "@/store/api/axiosInstance";
-import axios from "axios";
 import { AuthState, User } from "@/types/authTypes";
 
 
@@ -28,12 +28,7 @@ export const loginUser = createAsyncThunk<
     const response = await axiosInstance.post("/user/login", credentials);
     return response.data;
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      return rejectWithValue(
-        error.response?.data?.message || "Login failed"
-      );
-    }
-    return rejectWithValue("An unexpected error occurred");
+    return rejectWithValue(getApiErrorMessage(error, "Login failed"));
   }
 });
 

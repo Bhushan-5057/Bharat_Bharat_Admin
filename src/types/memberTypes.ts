@@ -1,6 +1,6 @@
 export const MEMBER_CATEGORIES = [
-  "national excutive council",
-  "national core commitee",
+  "National Excutive Council",
+  "National Core Commitee",
 ] as const;
 
 export type MemberCategory = (typeof MEMBER_CATEGORIES)[number];

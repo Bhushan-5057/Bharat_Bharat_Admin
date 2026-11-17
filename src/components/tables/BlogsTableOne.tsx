@@ -7,10 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableSerialCell, TableSerialHeader, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -23,18 +25,19 @@ import Image from "next/image";
 
 import { getAllBlogs, removeBlog } from "@/store/redux/slice/blogSlice";
 import { Blog } from "@/types/blogTypes";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import DeleteBlogConfirm from "../form/Blogs/DeleteBlogConfirm";
-import EditBlogForm from "../form/Blogs/EditBlogForm";
-import BlogView from "../form/Blogs/BlogView";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 export default function BlogsTableOne() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const { items: blogs = [], loading, error } = useSelector(
@@ -59,15 +62,13 @@ export default function BlogsTableOne() {
   }, [dispatch]);
 
   const handleView = (blog: Blog) => {
-    setSelectedBlog(blog);
-    setModalMode("view");
-    openModal();
+    if (!blog.id) return;
+    router.push(`/blogs/${blog.id}`);
   };
 
   const handleEdit = (blog: Blog) => {
-    setSelectedBlog(blog);
-    setModalMode("edit");
-    openModal();
+    if (!blog.id) return;
+    router.push(`/blogs/${blog.id}/edit`);
   };
 
   const handleDelete = (blog: Blog) => {
@@ -94,22 +95,14 @@ export default function BlogsTableOne() {
       closeModal();
     } catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err)
-      return (err as { message: string }).message;
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -118,6 +111,8 @@ export default function BlogsTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white ">Title</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white ">Category</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white ">Tags</TableCell>
@@ -131,7 +126,7 @@ export default function BlogsTableOne() {
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    {Array(6).fill(0).map((_, j) => (
+                    {Array(8).fill(0).map((_, j) => (
                       <TableCell key={j} className="px-5 py-4">
                         <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                       </TableCell>
@@ -153,31 +148,23 @@ export default function BlogsTableOne() {
               ) : (
                 paginatedBlogs.map((blog, index) => (
                   <TableRow key={blog.id ?? `blog-${index}`}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.blog)} />
+                    <TableIdCell id={blog.id} />
                     <TableCell className="px-5 py-4">{blog.title || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4">{blog.category || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4">{blog.tags || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4">{blog.creator?.name || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4">
-                      {blog.data ? (
+                      {getMediaUrl(blog) ? (
                         <div className="relative w-12 h-12">
                           <Image
-                            src={`data:image/png;base64,${blog.data}`}
+                            src={getMediaUrl(blog)}
                             alt={blog.title}
                             layout="fill"
                             objectFit="cover"
                             className="rounded-[25%]"
                             priority
-                          />
-                        </div>
-                      ) : blog.file_name ? (
-                        <div className="relative w-12 h-12">
-                          <Image
-                            src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/${blog.file_name}`}
-                            alt={blog.title}
-                            layout="fill"
-                            objectFit="cover"
-                            className="rounded-md"
-                            priority
+                            unoptimized
                           />
                         </div>
                       ) : (
@@ -233,14 +220,6 @@ export default function BlogsTableOne() {
 
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="relative w-full max-h-[80vh] overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-          {modalMode === "edit" && selectedBlog && (
-            <EditBlogForm blog={selectedBlog} onClose={closeModal} />
-          )}
-
-          {modalMode === "view" && selectedBlog && (
-            <BlogView blog={selectedBlog} onClose={closeModal} />
-          )}
-
           {modalMode === "delete" && selectedBlog && (
             <DeleteBlogConfirm
               onConfirm={handleDeleteConfirm}

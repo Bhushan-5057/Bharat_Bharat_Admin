@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { addVideo, updateVideo, getVideos } from "@/store/redux/slice/videoSlice";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { MESSAGES } from "@/components/common/constants/utlis";
 
 interface VideoUploadFormProps {
@@ -76,7 +76,7 @@ export const VideoUploadForm: React.FC<VideoUploadFormProps> = ({
         if (addVideo.fulfilled.match(resultAction)) {
           showSuccess(MESSAGES.ADD_SUCCESS || "Video added successfully");
         } else {
-          showError((resultAction.payload as string) || "Failed to add video");
+          showApiError(resultAction.payload, "Failed to add video");
         }
       } else if (mode === "edit" && initialVideo) {
         const resultAction = await dispatch(
@@ -85,7 +85,7 @@ export const VideoUploadForm: React.FC<VideoUploadFormProps> = ({
         if (updateVideo.fulfilled.match(resultAction)) {
           showSuccess(MESSAGES.EDIT_SUCCESS || "Video updated successfully");
         } else {
-          showError((resultAction.payload as string) || "Failed to update video");
+          showApiError(resultAction.payload, "Failed to update video");
         }
       }
 
@@ -93,7 +93,7 @@ export const VideoUploadForm: React.FC<VideoUploadFormProps> = ({
       onSuccess?.();
     } catch (err) {
       console.error("Video save failed", err);
-      showError("Failed to save video");
+      showApiError(err, "Failed to save video");
     } finally {
       setLoading(false);
     }

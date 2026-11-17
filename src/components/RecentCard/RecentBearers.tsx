@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 function RecentBearers() {
   const dispatch = useDispatch<AppDispatch>();
@@ -44,12 +45,10 @@ function RecentBearers() {
               key={idx}
               className="flex items-center gap-4 p-3 rounded-lg border hover:shadow-md transition bg-gray-50 dark:bg-gray-900"
             >
-              {bearer.data ? (
+              {getMediaUrl(bearer) ? (
                 <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                   <Image
-                    src={`data:image/${
-                      bearer.file_name?.endsWith(".svg") ? "svg+xml" : "png"
-                    };base64,${bearer.data}`}
+                    src={getMediaUrl(bearer)}
                     alt={bearer.title || "bearer"}
                     fill
                     className="object-cover"

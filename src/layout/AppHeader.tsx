@@ -1,21 +1,18 @@
 "use client";
-import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import UserDropdown from "@/components/header/UserDropdown";
 import { useSidebar } from "@/context/SidebarContext";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { TableIcon, GridIcon } from "lucide-react";
+import { TableIcon, GridIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IMGAGES } from "@/components/common/constants/utlis";
-import NotificationDropdown from "@/components/header/NotificationDropdown";
-import { useTheme } from "@/context/ThemeContext";
 
 const navItems = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Home", path: "/" }],
+    subItems: [{ name: "Dashboard", path: "/" }],
   },
   {
     name: "Tables",
@@ -26,14 +23,14 @@ const navItems = [
       { name: "Bearers", path: "/bearer-table" },
       { name: "Services", path: "/services-table" },
       { name: "Donation", path: "/donation-table" },
-      { name: "Cities", path: "/city-table" },
-      { name: "Publications", path: "/publication-table" },
+      { name: "Our Presence", path: "/city-table" },
+      { name: "Certificates", path: "/certificates-table" },
       { name: "Events", path: "/event-table" },
       { name: "Blog", path: "/blogs-table" },
       { name: "Photos", path: "/gallery/photos-table" },
       { name: "Videos", path: "/gallery/videos-table" },
       { name: "Activites", path: "/activity-table" },
-      { name: "Education", path: "/education-table" },
+      { name: "Achievements", path: "/achievements-table" },
     ],
   },
 ];
@@ -48,8 +45,7 @@ const searchableTables = navItems
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
-  const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
-  const { theme } = useTheme();
+  const { isMobileOpen, isExpanded, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     { label: string; path: string }[]
@@ -57,7 +53,7 @@ const AppHeader: React.FC = () => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
+  const logoSrc = IMGAGES.LOGO_LIGHT;
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -107,48 +103,61 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
   };
 
   return (
-    <header className="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 lg:border-b">
+    <header className="sticky top-0 z-99999 flex w-full border-gray-200 bg-white lg:border-b">
       <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
-        <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
+        <div className="flex w-full items-center justify-between gap-2 border-b border-gray-200 px-3 py-3 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
           <button
-            className="items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-99999 dark:border-gray-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
+            className="z-99999 items-center justify-center rounded-lg border-gray-200 text-gray-500 lg:flex lg:h-11 lg:w-11 lg:border w-10 h-10"
             onClick={handleToggle}
-            aria-label="Toggle Sidebar"
+            aria-label={
+              isMobileOpen
+                ? "Close sidebar"
+                : isExpanded
+                  ? "Collapse sidebar"
+                  : "Expand sidebar"
+            }
+            title={
+              isMobileOpen
+                ? "Close sidebar"
+                : isExpanded
+                  ? "Collapse sidebar"
+                  : "Expand sidebar"
+            }
           >
-            {isMobileOpen ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
-                  fill="currentColor"
-                />
-              </svg>
-            ) : (
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
-                  fill="currentColor"
-                />
-              </svg>
-            )}
+            <span className="lg:hidden">
+              {isMobileOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              ) : (
+                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              )}
+            </span>
+            <span className="hidden lg:inline-flex" aria-hidden="true">
+              {isExpanded ? (
+                <PanelLeftClose className="h-5 w-5" />
+              ) : (
+                <PanelLeftOpen className="h-5 w-5" />
+              )}
+            </span>
           </button>
 
           <Link href="/" className="lg:hidden">
             <Image
               width={154}
               height={32}
-              className="dark:hidden"
-              src={logoSrc}
-              alt="Logo"
-              style={{ width: "auto", height: "auto" }}
-            />
-            <Image
-              width={154}
-              height={32}
-              className="hidden dark:block"
               src={logoSrc}
               alt="Logo"
               style={{ width: "auto", height: "auto" }}
@@ -157,7 +166,7 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
 
           <button
             onClick={toggleApplicationMenu}
-            className="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+            className="z-99999 flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 lg:hidden"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path
@@ -181,7 +190,7 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
               <div className="relative">
                 <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
                   <svg
-                    className="fill-gray-500 dark:fill-gray-400"
+                    className="fill-gray-500"
                     width="20"
                     height="20"
                     viewBox="0 0 20 20"
@@ -201,14 +210,14 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
                   value={query}
                   onChange={handleSearchChange}
                   placeholder="Search or type command..."
-                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900  dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 xl:w-[430px]"
+                  className="h-11 w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 xl:w-[430px]"
                 />
                 {searchResults.length > 0 && (
-                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-hidden rounded-md bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700">
+                  <ul className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-md">
                     {searchResults.map((result) => (
                       <li
                         key={result.path}
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
                         onClick={() => handleResultClick(result.path, result.label)}
                       >
                         {result.label}
@@ -216,7 +225,7 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
                     ))}
                   </ul>
                 )}
-                <button className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
+                <button className="absolute top-1/2 right-2.5 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs text-gray-500">
                   ⌘ K
                 </button>
               </div>
@@ -228,10 +237,6 @@ const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
           className={`${isApplicationMenuOpen ? "flex" : "hidden"
             } items-center justify-between w-full gap-2 px-8 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
-          <div className="flex items-center gap-2 2xsm:gap-3">
-            <ThemeToggleButton />
-            <NotificationDropdown />
-          </div>
           <UserDropdown />
         </div>
       </div>

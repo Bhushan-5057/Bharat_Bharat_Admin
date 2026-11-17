@@ -4,9 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
-import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField, FormSection } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { CreateServiceFormData, createServiceSchema } from "@/validations/serviceSchema";
@@ -74,54 +75,54 @@ export default function AddServiceForm({ closeModal }: { closeModal?: () => void
       setPreview(null);
     } catch (err: unknown) {
       console.error("Add service failed:", err);
-      const errorMessage = err && typeof err === "object" && "message" in err
-        ? (err as { message: string }).message
-        : MESSAGES.ADD_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.ADD_ERROR);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
+      <FormSection title="Basic information">
+      <FormField label="Title" htmlFor="title" required error={errors.title?.message}>
         <Input id="title" placeholder="Enter service title" {...register("title")} />
-        {errors.title && <p className="text-red-600 text-sm">{errors.title?.message}</p>}
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <textarea
+      <FormField label="Description" htmlFor="description" error={errors.description?.message}>
+        <Textarea
           id="description"
-          placeholder="Enter service description"
-          className="w-full border rounded-md p-2 text-sm"
+          fieldSize="md"
+          placeholder="Enter a detailed description of the service, including key features"
           {...register("description")}
         />
-        {errors.description && <p className="text-red-600 text-sm">{errors.description?.message}</p>}
-      </div>
+      </FormField>
+      </FormSection>
 
-      <div className="space-y-2">
-        <Label htmlFor="file_name">Image (SVG only)</Label>
+      <FormSection title="Media">
+      <FormField label="Image" htmlFor="file_name" required hint="SVG only" error={errors.file_name?.message ? String(errors.file_name.message) : undefined}>
         <Input id="file_name" type="file" accept="image/svg+xml" onChange={handleFileChange} />
-        {errors.file_name?.message && <p className="text-red-600 text-sm">{String(errors.file_name.message)}</p>}
-
-        {preview && (
-
-          <div className="relative mt-2 h-24 w-24">
+        {preview ? (
+          <div className="relative mt-2 h-28 w-28 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
             <Image
               src={preview}
-              alt="Preview"
+              alt="Selected image preview"
               fill
-              className="rounded-md object-contain border"
+              className="object-contain p-2"
               unoptimized={true}
             />
           </div>
+        ) : (
+          <p className="text-xs text-gray-500">No image selected</p>
         )}
-      </div>
+      </FormField>
+      </FormSection>
 
-      <div className="flex justify-end">
-        <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit"}
+      <div className="flex justify-end gap-2">
+        {closeModal ? (
+          <Button variant="outline" type="button" onClick={closeModal} disabled={isSubmitting}>
+            Cancel
+          </Button>
+        ) : null}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save"}
         </Button>
       </div>
     </form>

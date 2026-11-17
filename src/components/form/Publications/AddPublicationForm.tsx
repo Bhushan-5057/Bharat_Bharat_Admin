@@ -3,12 +3,13 @@
 import React, { useState, DragEvent } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import Button from "@/components/ui/button/Button";
 import { Upload } from "lucide-react";
 import { createPublication, editPublication, getPublications } from "@/store/redux/slice/publicationSlice";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { SelectedPublication } from "@/types/publicationTypes";
+import { getCertificateViewerHref } from "@/utils/certificateUrl";
 
 
 interface PublicationFormProps {
@@ -29,6 +30,9 @@ export default function AddPublicationForm({
 
     const [pdf, setPdf] = useState<File | null>(null);
     const [dragOver, setDragOver] = useState(false);
+    const currentPdfUrl = selectedPublication
+        ? getCertificateViewerHref(selectedPublication)
+        : "";
 
     const handleFileSelect = (file: File) => {
         if (file.type !== "application/pdf") {
@@ -70,17 +74,13 @@ export default function AddPublicationForm({
             closeModal?.();
             setPdf(null);
         } catch (err: unknown) {
-            if (typeof err === "object" && err !== null && "message" in err) {
-                showError((err as { message?: string }).message || MESSAGES.PDF_ERROR);
-            } else {
-                showError(MESSAGES.PDF_ERROR);
-            }
+            showApiError(err, MESSAGES.PDF_ERROR);
         }
     };
     return (
         <form onSubmit={handleSubmit} className="space-y-6 mt-2">
             <h2 className="text-xl font-semibold text-center">
-                {publicationId ? "Edit Publication" : "Upload Form"}
+                {publicationId ? "Edit Certificate" : "Upload Form"}
             </h2>
             <div
                 className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-40 cursor-pointer transition ${dragOver ? "border-blue-500 bg-blue-50" : "border-gray-300"
@@ -104,22 +104,6 @@ export default function AddPublicationForm({
                     <p className="text-sm font-medium text-gray-700">{pdf.name}</p>
                 )}
 
-
-                {publicationId && selectedPublication && !pdf && (
-                    <div className="mt-2 text-sm text-gray-600 text-center">
-                        Current file:{" "}
-                        <a
-                            href={`data:application/pdf;base64,${selectedPublication.file_name}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline"
-                        >
-                            {selectedPublication.file_name}
-                        </a>
-                    </div>
-                )}
-
-
                 <input
                     id="pdfInput"
                     type="file"
@@ -128,6 +112,20 @@ export default function AddPublicationForm({
                     onChange={handleFileChange}
                 />
             </div>
+
+            {publicationId && selectedPublication && !pdf && currentPdfUrl && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Current file:{" "}
+                    <a
+                        href={currentPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline dark:text-blue-400"
+                    >
+                        {selectedPublication.file_name || "View PDF"}
+                    </a>
+                </p>
+            )}
             <div className="flex justify-end">
                 <Button
                     type="submit"

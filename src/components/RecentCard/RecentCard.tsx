@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Image from "next/image";
 import { CalendarDays } from "lucide-react";
 import { formatCreatedAt } from "@/lib/utils";
+import { getDisplayImageUrl } from "@/utils/mediaUrl";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
 
@@ -53,11 +54,10 @@ function RecentCard() {
                             key={idx}
                             className="flex items-center gap-4 p-4 rounded-lg border hover:shadow-md transition bg-gray-50 dark:bg-gray-900"
                         >
-                            {event.data ? (
+                            {getDisplayImageUrl(event) ? (
                                 <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
                                     <Image
-                                        src={`data:image/${event.file_name?.endsWith(".svg") ? "svg+xml" : "png"
-                                            };base64,${event.data}`}
+                                        src={getDisplayImageUrl(event)}
                                         alt={event.title || "event"}
                                         fill
                                         className="object-cover"

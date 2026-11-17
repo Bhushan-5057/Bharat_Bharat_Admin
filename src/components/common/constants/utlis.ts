@@ -1,6 +1,7 @@
 export const IMGAGES = {
-LOGO: "/images/logo/Bharat-Bharati-logo1.png",
-LOGO_LIGHT: "/images/logo/Bharat-Bharati-logo1.png",  
+LOGO: "/images/logo/bharat_bharti_logo.webp",
+LOGO_LIGHT: "/images/logo/bharat_bharti_logo.webp",
+LOGO_COLLAPSED: "/images/logo/android-chrome-512x512.png",
 LOGO_DARK: "/images/logo/Bhart_Bharti_new_logo_1.png", 
 PROFILE: "/images/avatar/avatar-25.webp",
 PROFILE1: "/images/avatar/avatar-4.webp",

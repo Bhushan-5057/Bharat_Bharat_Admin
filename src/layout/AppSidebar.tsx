@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import { useTheme } from "@/context/ThemeContext";
 
 
 import {
@@ -14,6 +13,7 @@ import {
   HorizontaLDots,
 } from "@/icons/index";
 import { IMGAGES } from "@/components/common/constants/utlis";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { SwatchBook, BoxIcon, HomeIcon, UsersIcon, ImageIcon, Settings2, BookIcon, GraduationCapIcon, CalendarIcon, ActivityIcon, MapPinIcon, FileTextIcon, GalleryHorizontal, VideoIcon, DockIcon, EggFried } from "lucide-react";
 
 type NavItem = {
@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Home", path: "/", pro: false, icon: <HomeIcon /> }],
+    path: "/",
   },
   {
     name: "Modules",
@@ -43,19 +43,19 @@ const navItems: NavItem[] = [
         subItems: [
           { name: "Banner", path: "/banner-table", icon: <ImageIcon /> },
           { name: "Service", path: "/services-table", icon: <Settings2 /> },
-          { name: "Bearer", path: "/bearer-table", icon: <UsersIcon /> },
+          { name: "Office Bearer", path: "/bearer-table", icon: <UsersIcon /> },
         ],
       },
       {
         name: "Header",
         icon: <SwatchBook />,
         subItems: [
-          { name: "Publications", path: "/publication-table", pro: false, icon: <BookIcon /> },
+          { name: "Certificates", path: "/certificates-table", pro: false, icon: <BookIcon /> },
           { name: "Members", path: "/members-table", pro: false, icon: <UsersIcon /> },
-          { name: "Educations", path: "/education-table", pro: false, icon: <GraduationCapIcon /> },
+          { name: "Achievements", path: "/achievements-table", pro: false, icon: <GraduationCapIcon /> },
           { name: "Events", path: "/event-table", pro: false, icon: <CalendarIcon /> },
           { name: "Activities", path: "/activity-table", pro: false, icon: <ActivityIcon /> },
-          { name: "Cities", path: "/city-table", pro: false, icon: <MapPinIcon /> },
+          { name: "Our Presence", path: "/city-table", pro: false, icon: <MapPinIcon /> },
           { name: "Blogs", path: "/blogs-table", pro: false, icon: <FileTextIcon /> },
           {
             name: "Gallery",
@@ -71,7 +71,8 @@ const navItems: NavItem[] = [
         name: "Footer",
         icon: <EggFried />,
         subItems: [
-          { name: "Donation", path: "/donation-table", pro: false, icon: <DockIcon /> },
+          { name: "Donation Details", path: "/donation-table", pro: false, icon: <DockIcon /> },
+          { name: "Contact Details", path: "/contact-details-table", pro: false, icon: <MapPinIcon /> },
         ],
       },
     ],
@@ -80,24 +81,35 @@ const navItems: NavItem[] = [
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const { theme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
-  const logoSrc = theme === "dark" ? IMGAGES.LOGO_DARK : IMGAGES.LOGO_LIGHT;
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const showFullLogo = isExpanded || isHovered || isMobileOpen;
 
   const isActive = useCallback(
     (path: string) => {
       if (!pathname) return false;
       if (pathname === path) return true;
 
-      if (path === "/education-table" && pathname.startsWith("/education/")) return true;
+      if (path === "/achievements-table" && pathname.startsWith("/achievements/")) return true;
       if (path === "/city-table" && pathname.startsWith("/cities/")) return true;
-      if (path === "/banner-table" && pathname.startsWith("/home-section")) return true;
-      if (path === "/bearer-table" && pathname.startsWith("/office-bearers/add-new")) return true;
+      if (path === "/event-table" && pathname.startsWith("/events/")) return true;
+      if (path === "/activity-table" && pathname.startsWith("/activities/")) return true;
+      if (path === "/blogs-table" && pathname.startsWith("/blogs/")) return true;
+      if (path === "/admin-table" && pathname.startsWith("/admins/")) return true;
+      if (path === "/services-table" && pathname.startsWith("/services/")) return true;
+      if (path === "/members-table" && pathname.startsWith("/members/")) return true;
+      if (path === "/donation-table" && pathname.startsWith("/donations/")) return true;
+      if (path === "/contact-details-table" && pathname.startsWith("/contact-details/")) return true;
+      if (path === "/certificates-table" && pathname.startsWith("/certificates/")) return true;
+      if (path === "/gallery/photos-table" && pathname.startsWith("/gallery/photos/")) return true;
+      if (path === "/gallery/videos-table" && pathname.startsWith("/gallery/videos/")) return true;
+      if (path === "/banner-table" && (pathname.startsWith("/home-section") || pathname.startsWith("/banners/"))) return true;
+      if (path === "/bearer-table" && pathname.startsWith("/office-bearers/")) return true;
       return false;
     },
     [pathname]
@@ -131,6 +143,7 @@ const AppSidebar: React.FC = () => {
     localStorage.removeItem("user");
     sessionStorage.clear();
 
+    setLogoutOpen(false);
     router.replace("/signin");
   }, [router]);
 
@@ -140,7 +153,7 @@ const AppSidebar: React.FC = () => {
         {
           icon: <PlugInIcon />,
           name: "Sign Out",
-          onClick: handleLogout,
+          onClick: () => setLogoutOpen(true),
         },
       ];
     } else {
@@ -257,10 +270,20 @@ const AppSidebar: React.FC = () => {
           nav.path &&
           (
             pathname === nav.path ||
-            (nav.path === "/education-table" && pathname.startsWith("/education/")) ||
+            (nav.path === "/achievements-table" && pathname.startsWith("/achievements/")) ||
             (nav.path === "/city-table" && pathname.startsWith("/cities/")) ||
-            (nav.path === "/banner-table" && pathname.startsWith("/home-section")) ||
-            (nav.path === "/bearer-table" && pathname.startsWith("/office-bearers/add-new"))
+            (nav.path === "/event-table" && pathname.startsWith("/events/")) ||
+            (nav.path === "/activity-table" && pathname.startsWith("/activities/")) ||
+            (nav.path === "/blogs-table" && pathname.startsWith("/blogs/")) ||
+            (nav.path === "/admin-table" && pathname.startsWith("/admins/")) ||
+            (nav.path === "/services-table" && pathname.startsWith("/services/")) ||
+            (nav.path === "/members-table" && pathname.startsWith("/members/")) ||
+            (nav.path === "/donation-table" && pathname.startsWith("/donations/")) ||
+            (nav.path === "/certificates-table" && pathname.startsWith("/certificates/")) ||
+            (nav.path === "/gallery/photos-table" && pathname.startsWith("/gallery/photos/")) ||
+            (nav.path === "/gallery/videos-table" && pathname.startsWith("/gallery/videos/")) ||
+            (nav.path === "/banner-table" && (pathname.startsWith("/home-section") || pathname.startsWith("/banners/"))) ||
+            (nav.path === "/bearer-table" && pathname.startsWith("/office-bearers/"))
           );
 
         let hasActiveChild = false;
@@ -313,24 +336,30 @@ const AppSidebar: React.FC = () => {
           } ${isMobileOpen ? "py-12" : "py-0"}`}
       >
         {!isMobileOpen && (
-          <Link href="/">
-            {isExpanded || isHovered ? (
+          <Link
+            href="/"
+            className={`flex items-center transition-all duration-300 ${
+              showFullLogo ? "justify-start" : "lg:justify-center"
+            }`}
+            aria-label="Bharat Bharati dashboard"
+          >
+            {showFullLogo ? (
               <Image
-                src={logoSrc}
-                alt="Logo"
-                className="mt-5"
+                src={IMGAGES.LOGO_LIGHT}
+                alt="Bharat Bharati"
                 width={190}
-                height={60}
-                style={{ width: "auto", height: "auto" }}
+                height={48}
+                className="mt-5 h-12 w-auto max-w-[190px] object-contain transition-opacity duration-300"
+                priority
               />
             ) : (
               <Image
-                src={logoSrc}
-                className="mt-5 mb-4"
-                alt="Logo"
-                width={200}
-                height={80}
-                style={{ width: "auto", height: "auto" }}
+                src={IMGAGES.LOGO_COLLAPSED}
+                alt="Bharat Bharati"
+                width={40}
+                height={40}
+                className="mt-5 mb-2 h-10 w-10 object-contain transition-opacity duration-300"
+                priority
               />
             )}
           </Link>
@@ -361,6 +390,16 @@ const AppSidebar: React.FC = () => {
           </div>
         </nav>
       </div>
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Sign out"
+        description="Are you sure you want to logout?"
+        confirmLabel="Logout"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
     </aside>
   );
 };

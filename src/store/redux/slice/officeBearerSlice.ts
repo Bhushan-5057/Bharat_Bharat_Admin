@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAllOfficeBearers,
@@ -8,7 +9,6 @@ import {
   CreateOfficeBearerPayload,
   UpdateOfficeBearerPayload,
 } from "@/store/api/officeBearerApi";
-import { AxiosError } from "axios";
 import { OfficeBearer, OfficeBearerState } from "@/types/officeBearerTypes";
 
 
@@ -28,8 +28,7 @@ export const getAllOfficeBearers = createAsyncThunk<
   try {
     return await fetchAllOfficeBearers();
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch office bearers");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch office bearers"));
   }
 });
 
@@ -41,8 +40,7 @@ export const getOfficeBearerById = createAsyncThunk<
   try {
     return await fetchOfficeBearerById(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch office bearer");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch office bearer"));
   }
 });
 
@@ -54,8 +52,7 @@ export const addOfficeBearer = createAsyncThunk<
   try {
     return await createOfficeBearer(payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to create office bearer");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to create office bearer"));
   }
 });
 
@@ -67,8 +64,7 @@ export const editOfficeBearer = createAsyncThunk<
   try {
     return await updateOfficeBearer(id, payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to update office bearer");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update office bearer"));
   }
 });
 
@@ -80,8 +76,7 @@ export const removeOfficeBearer = createAsyncThunk<
   try {
     await deleteOfficeBearer(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to delete office bearer");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete office bearer"));
   }
 });
 

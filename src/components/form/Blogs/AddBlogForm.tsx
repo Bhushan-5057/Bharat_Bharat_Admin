@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField, FormSection } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { MESSAGES } from "@/components/common/constants/utlis";
@@ -66,59 +68,57 @@ export default function AddBlogForm({ closeModal }: { closeModal?: () => void })
       setPreview(null);
     } catch (err: unknown) {
       console.error("Add blog failed:", err);
-      const errorMessage = err && typeof err === "object" && "message" in err
-        ? (err as { message: string }).message
-        : MESSAGES.ADD_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.ADD_ERROR);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
+      <FormSection title="Basic information">
+      <FormField label="Title" htmlFor="title" required error={errors.title?.message}>
         <Input id="title" placeholder="Enter blog title" {...register("title")} />
-        {errors.title && <p className="text-red-600 text-sm">{errors.title.message}</p>}
+      </FormField>
+      <FormField label="Slug" htmlFor="slug" required error={errors.slug?.message}>
+        <Input id="slug" placeholder="Enter URL slug" {...register("slug")} />
+      </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Category" htmlFor="category" error={errors.category?.message}>
+          <Input id="category" placeholder="Enter category" {...register("category")} />
+        </FormField>
+        <FormField label="Tags" htmlFor="tags" hint="Comma-separated" error={errors.tags?.message}>
+          <Input id="tags" placeholder="education, culture, news" {...register("tags")} />
+        </FormField>
       </div>
+      </FormSection>
 
-      <div className="space-y-2">
-        <Label htmlFor="slug">Slug</Label>
-        <Input id="slug" placeholder="Enter slug" {...register("slug")} />
-        {errors.slug && <p className="text-red-600 text-sm">{errors.slug.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="meta_title">Meta Title</Label>
+      <FormSection title="SEO">
+      <FormField label="Meta title" htmlFor="meta_title" error={errors.meta_title?.message}>
         <Input id="meta_title" placeholder="Enter meta title" {...register("meta_title")} />
-        {errors.meta_title && <p className="text-red-600 text-sm">{errors.meta_title.message}</p>}
-      </div>
+      </FormField>
+      <FormField label="Meta description" htmlFor="meta_description" error={errors.meta_description?.message}>
+        <Textarea
+          id="meta_description"
+          fieldSize="sm"
+          placeholder="Enter a short summary for search results"
+          {...register("meta_description")}
+        />
+      </FormField>
+      </FormSection>
 
-      <div className="space-y-2">
-        <Label htmlFor="meta_description">Meta Description</Label>
-        <textarea id="meta_description" placeholder="Enter meta description" className="w-full border rounded-md p-2 text-sm" {...register("meta_description")} />
-        {errors.meta_description && <p className="text-red-600 text-sm">{errors.meta_description.message}</p>}
-      </div>
+      <FormSection title="Content">
+      <FormField label="Content" htmlFor="content" required error={errors.content?.message}>
+        <Textarea
+          id="content"
+          fieldSize="lg"
+          placeholder="Write the full blog content"
+          {...register("content")}
+        />
+      </FormField>
+      </FormSection>
 
+      <FormSection title="Media">
       <div className="space-y-2">
-        <Label htmlFor="content">Content</Label>
-        <textarea id="content" placeholder="Enter blog content" className="w-full border rounded-md p-2 text-sm" {...register("content")} />
-        {errors.content && <p className="text-red-600 text-sm">{errors.content.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="tags">Tags</Label>
-        <Input id="tags" placeholder="Enter tags (comma separated)" {...register("tags")} />
-        {errors.tags && <p className="text-red-600 text-sm">{errors.tags.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="category">Category</Label>
-        <Input id="category" placeholder="Enter category" {...register("category")} />
-        {errors.category && <p className="text-red-600 text-sm">{errors.category.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Blog Image</label>
+        <Label htmlFor="fileInput">Blog image</Label>
         <div
           className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-32 cursor-pointer hover:border-blue-500 transition"
         >
@@ -144,10 +144,11 @@ export default function AddBlogForm({ closeModal }: { closeModal?: () => void })
 
         {errors.file_name && <p className="text-red-600 text-sm">{errors.file_name.message}</p>}
       </div>
+      </FormSection>
 
-      <div className="flex justify-end">
-        <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit"}
+      <div className="flex justify-end gap-2">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save"}
         </Button>
       </div>
     </form>

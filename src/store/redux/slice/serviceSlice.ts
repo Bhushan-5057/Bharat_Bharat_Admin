@@ -8,6 +8,7 @@ import {
   UpdateServicePayload,
 } from "@/store/api/serviceApi";
 import { ServiceState } from "@/types/serviceTypes";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 
@@ -25,9 +26,7 @@ export const fetchAllServicesThunk = createAsyncThunk(
     try {
       return await fetchAllServices();
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch services";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch services"));
     }
   }
 );
@@ -38,9 +37,7 @@ export const fetchServiceByIdThunk = createAsyncThunk(
     try {
       return await fetchServiceById(id);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch service";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch service"));
     }
   }
 );
@@ -51,9 +48,7 @@ export const createServiceThunk = createAsyncThunk(
     try {
       return await createService(payload);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to create service";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getApiErrorMessage(err, "Failed to create service"));
     }
   }
 );
@@ -64,9 +59,7 @@ export const updateServiceThunk = createAsyncThunk(
     try {
       return await updateService(payload);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to update service";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getApiErrorMessage(err, "Failed to update service"));
     }
   }
 );
@@ -78,9 +71,7 @@ export const deleteServiceThunk = createAsyncThunk(
       await deleteService(id);
       return id;
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to delete service";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getApiErrorMessage(err, "Failed to delete service"));
     }
   }
 );

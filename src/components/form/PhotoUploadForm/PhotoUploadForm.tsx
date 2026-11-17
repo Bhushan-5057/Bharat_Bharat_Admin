@@ -2,7 +2,7 @@
 import React, { JSX, useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useDropzone } from "react-dropzone";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { AppDispatch } from "@/store/redux/store";
 import { CreatePhotoPayload, UpdatePhotoPayload, Photo } from "@/store/api/photoApi";
 import { addPhoto, editPhoto, getPhotos } from "@/store/redux/slice/photoSlice";
 import { Upload } from "lucide-react";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 
 const mainVariant = { initial: { x: 0, y: 0 }, animate: { x: 20, y: -20, opacity: 0.9 } };
@@ -117,7 +118,7 @@ if (mode === "edit" && initialPhoto) {
     router.push("/gallery/photos-table");
     onSuccess?.(); 
   } else {
-    showError(resultAction.payload as string);
+    showApiError(resultAction.payload, MESSAGES.EDIT_ERROR || "Failed to update photo");
   }
 }
  else {
@@ -134,7 +135,7 @@ if (mode === "edit" && initialPhoto) {
         if (addPhoto.fulfilled.match(resultAction)) {
           showSuccess("Photo uploaded successfully");
         } else {
-          showError(resultAction.payload as string);
+          showApiError(resultAction.payload, "Failed to upload photo");
         }
       }
       router.push("/gallery/photos-table"); 
@@ -145,7 +146,7 @@ if (mode === "edit" && initialPhoto) {
     onSuccess?.();
   } catch (err) {
     console.error("❌ Upload/Update failed", err);
-    showError("Failed to save photos");
+    showApiError(err, "Failed to save photos");
   } finally {
     setUploading(false);
   }
@@ -209,13 +210,17 @@ if (mode === "edit" && initialPhoto) {
                 </div>
               ))}
 
-              {previewFiles.map((photo, idx) => (
+              {previewFiles.map((photo, idx) => {
+                const src = getMediaUrl(photo);
+                if (!src) return null;
+                return (
                 <div key={`prev-${idx}`} className="relative w-28 h-28 border rounded-md overflow-hidden">
                   <Image
-                    src={`data:image/png;base64,${photo.data}`}
+                    src={src}
                     alt={photo.file_name || "Photo"}
                     fill
                     className="object-cover"
+                    unoptimized
                   />
                   <button
                     type="button"
@@ -225,7 +230,8 @@ if (mode === "edit" && initialPhoto) {
                     ✕
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {files.length === 0 && previewFiles.length === 0 && (

@@ -1,8 +1,7 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { CreatePublicationPayload, deletePublication, fetchAllPublications, fetchPublicationById, updatePublication, UpdatePublicationPayload, uploadPublication } from "@/store/api/publicationsApi";
 import { Publication, PublicationState } from "@/types/publicationTypes";
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-
-
 
 const initialState: PublicationState = {
     publications: [],
@@ -12,11 +11,15 @@ const initialState: PublicationState = {
     fileName: "",
 };
 
-interface ApiError {
-    response?: {
-        data?: string;
-    };
-    message: string;
+function unwrapPublicationPayload(data: unknown): Publication {
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+        const record = data as Record<string, unknown>;
+        const wrapped = record.certificateWithRelation ?? record.updatedCertificate;
+        if (wrapped && typeof wrapped === "object" && !Array.isArray(wrapped) && "id" in wrapped) {
+            return wrapped as Publication;
+        }
+    }
+    return data as Publication;
 }
 
 export const getPublications = createAsyncThunk(
@@ -26,8 +29,7 @@ export const getPublications = createAsyncThunk(
             const data = await fetchAllPublications();
             return data;
         } catch (error: unknown) {
-            const err = error as ApiError;
-            return rejectWithValue(err.response?.data || err.message);
+            return rejectWithValue(getApiErrorMessage(error));
         }
     }
 );
@@ -37,10 +39,9 @@ export const createPublication = createAsyncThunk(
     async (payload: CreatePublicationPayload, { rejectWithValue }) => {
         try {
             const data = await uploadPublication(payload);
-            return data;
+            return unwrapPublicationPayload(data);
         } catch (err: unknown) {
-            const error = err as ApiError;
-            return rejectWithValue(error.response?.data || error.message);
+            return rejectWithValue(getApiErrorMessage(err));
         }
     }
 );
@@ -51,11 +52,10 @@ export const editPublication = createAsyncThunk(
     async ({ id, payload }: { id: number | string; payload: UpdatePublicationPayload }, { rejectWithValue }) => {
         try {
             const data = await updatePublication(id, payload);
-            return data;
+            return unwrapPublicationPayload(data);
         } catch (error: unknown) {
-            const err = error as ApiError;
-            console.error("❌ Update publication failed:", err.response?.data || err.message);
-            return rejectWithValue(err.response?.data || err.message);
+            console.error("❌ Update publication failed:", getApiErrorMessage(error));
+            return rejectWithValue(getApiErrorMessage(error));
         }
     }
 );
@@ -68,31 +68,34 @@ export const removePublication = createAsyncThunk(
             const data = await deletePublication(id);
             return { id, ...data };
         } catch (error: unknown) {
-            const err = error as ApiError;
-            return rejectWithValue(err.response?.data || err.message);
+            return rejectWithValue(getApiErrorMessage(error));
         }
     }
 );
 
 export const getPublicationById = createAsyncThunk(
   "certificate/fetchById",
-  async (id: number, { rejectWithValue }) => {
+  async (id: number, { getState, rejectWithValue }) => {
     try {
-      const { fileName } = await fetchPublicationById(id); 
-      
-      return { fileName };
+      const { publications } = getState() as { publications: PublicationState };
+      const cached = publications.publications.find((item) => Number(item.id) === Number(id));
+      if (cached) return cached;
+      if (
+        publications.selectedPublication &&
+        Number(publications.selectedPublication.id) === Number(id)
+      ) {
+        return publications.selectedPublication;
+      }
+      return await fetchPublicationById(id);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch certificate"
-      );
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch certificate"));
     }
   }
 );
 
 
 const publicationSlice = createSlice({
-    name: "publications",
+    name: "certificates",
     initialState,
     reducers: {},
     extraReducers: (builder) => {
@@ -129,6 +132,10 @@ const publicationSlice = createSlice({
                 state.loading = false;
                 const index = state.publications.findIndex((p) => p.id === action.payload.id);
                 if (index !== -1) state.publications[index] = action.payload;
+                if (state.selectedPublication?.id === action.payload.id) {
+                    state.selectedPublication = action.payload;
+                    state.fileName = action.payload?.file_name || "";
+                }
             })
             .addCase(editPublication.rejected, (state, action) => {
                 state.loading = false;
@@ -153,7 +160,8 @@ const publicationSlice = createSlice({
             })
             .addCase(getPublicationById.fulfilled, (state, action) => {
                 state.loading = false;
-                state.fileName = action.payload.fileName;
+                state.selectedPublication = action.payload;
+                state.fileName = action.payload?.file_name || "";
             })
             .addCase(getPublicationById.rejected, (state, action) => {
                 state.loading = false;
@@ -164,4 +172,3 @@ const publicationSlice = createSlice({
 });
 
 export default publicationSlice.reducer;
-

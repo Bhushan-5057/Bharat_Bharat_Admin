@@ -13,18 +13,13 @@ export const createBearerSchema = z
 
     designation: z
       .string()
-      .min(1, "Designation is required")
-      .refine(
-        (val) => /^[A-Za-z\s]+$/.test(val) && val.trim().length > 0,
-        { message: "Designation must contain only letters and spaces and cannot be empty" }
-      ),
+      .min(1, "Designation is required"),
 
     quotes: z
       .string()
       .optional()
-      .transform((val) => (val ? val.trim() : val))
-      .refine((val) => !val || /^[A-Za-z\s.,!?'"-]+$/.test(val), {
-        message: "Quotes can only contain letters, spaces, and basic punctuation",
+      .refine((val) => !val || /^[A-Za-z0-9\s.,!?'"\-•*]+$/.test(val), {
+        message: "Quotes can only contain letters, numbers, spaces, and basic punctuation",
       }),
     gmail: z
       .string()

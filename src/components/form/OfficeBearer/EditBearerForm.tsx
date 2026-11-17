@@ -5,15 +5,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { createBearerSchema, CreateBearerFormData } from "@/validations/officeBearerSchema";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { editOfficeBearer, getAllOfficeBearers } from "@/store/redux/slice/officeBearerSlice";
 import { UpdateOfficeBearerPayload } from "@/store/api/officeBearerApi";
 import Image from "next/image";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 export interface Bearer {
   id: string;
@@ -24,7 +27,9 @@ export interface Bearer {
   facebook?: string;
   twitter?: string;
   file_name?: string;
-  data?: string;
+  url?: string | null;
+  cloudinary_url?: string | null;
+  data?: string | null;
 }
 
 interface EditBearerFormProps {
@@ -60,16 +65,10 @@ export default function EditBearerForm({ bearer, onClose }: EditBearerFormProps)
       facebook: bearer.facebook,
       twitter: bearer.twitter,
       file_name: undefined,
-      existingImage: !!bearer.file_name || !!bearer.data,
+      existingImage: !!getMediaUrl(bearer),
     });
 
-    setPreview(
-      bearer.data
-        ? `data:image/png;base64,${bearer.data}`
-        : bearer.file_name
-          ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/${bearer.file_name}`
-          : null
-    );
+    setPreview(getMediaUrl(bearer) || null);
   }, [bearer, reset]);
 
   const watchFile = watch("file_name");
@@ -110,18 +109,14 @@ export default function EditBearerForm({ bearer, onClose }: EditBearerFormProps)
       onClose?.();
     } catch (err: unknown) {
       console.error("Update bearer failed:", err);
-      const errorMessage = err && typeof err === "object" && "message" in err
-        ? (err as { message: string }).message
-        : MESSAGES.EDIT_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.EDIT_ERROR);
     }
   };
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 mt-2 max-w-lg mx-auto p-4 sm:p-6 bg-white  dark:bg-black rounded-lg overflow-auto"
-      style={{ maxHeight: "90vh" }}
+      className="space-y-4 mt-2 max-w-lg mx-auto p-4 sm:p-6 bg-white  dark:bg-black rounded-lg"
     >
       <div className="space-y-2">
         <Label htmlFor="title">Name</Label>
@@ -135,16 +130,14 @@ export default function EditBearerForm({ bearer, onClose }: EditBearerFormProps)
         {errors.designation && <p className="text-red-600 text-sm">{errors.designation.message}</p>}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="quotes">Quotes</Label>
-        <textarea
+      <FormField label="Quotes" htmlFor="quotes" error={errors.quotes?.message}>
+        <Textarea
           id="quotes"
-          placeholder="Enter quotes"
-          className="w-full border rounded-md p-2 text-sm resize-none sm:resize-y"
+          fieldSize="sm"
+          placeholder="Enter a short quote"
           {...register("quotes")}
         />
-        {errors.quotes && <p className="text-red-600 text-sm">{errors.quotes.message}</p>}
-      </div>
+      </FormField>
 
       <div className="space-y-2">
         <Label htmlFor="gmail">Email</Label>

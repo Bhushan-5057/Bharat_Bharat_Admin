@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { EyeCloseIcon, EyeIcon } from "@/icons";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
@@ -34,14 +34,8 @@ export default function AddAdminForm({ closeModal }: { closeModal?: () => void }
     closeModal?.();
     reset();
   } catch (err: unknown) {
-    
-    if (err instanceof Error) {
-      console.error("Add admin failed:", err);
-      showError(err.message || MESSAGES.ADD_ERROR);
-    } else {
-      console.error("Add admin failed:", err);
-      showError(MESSAGES.ADD_ERROR);
-    }
+    console.error("Add admin failed:", err);
+    showApiError(err, MESSAGES.ADD_ERROR);
   }
 };
 

@@ -13,7 +13,11 @@ export interface Donation {
     name: string;
   };
   file_name?: string;
-  data?: string;
+  url?: string | null;
+  cloudinary_url?: string | null;
+  cloudinary_public_id?: string | null;
+  cloudinary_resource_type?: "image" | "video" | "raw" | null;
+  data?: string | null;
 }
 
 export interface DonationTableOneProps {

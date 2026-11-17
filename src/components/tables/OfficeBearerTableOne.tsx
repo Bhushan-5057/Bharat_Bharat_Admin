@@ -7,10 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableSerialCell, TableSerialHeader, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -21,21 +23,22 @@ import {
 } from "@/components/ui/pagination/pagination";
 import DeleteOfficeBearerConfirm from "../form/OfficeBearer/DeleteOfficeBearerConfirm";
 import { getAllOfficeBearers, removeOfficeBearer } from "@/store/redux/slice/officeBearerSlice";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
-import EditBearerForm, { Bearer } from "../form/OfficeBearer/EditBearerForm";
-import OfficeBearerView from "../form/OfficeBearer/OfficeBearerView";
 import Image from "next/image";
 import { OfficeBearer } from "@/types/officeBearerTypes";
 import { FacebookIcon, TwitterIcon } from "../SvgIcons/Icons";
+import { getMediaUrl } from "@/utils/mediaUrl";
  
  
 export default function OfficeBearerTableOne() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
  
   const [selectedBearer, setSelectedBearer] = useState<OfficeBearer | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
  
   const { items: officeBearers = [], loading, error } = useSelector(
@@ -60,15 +63,13 @@ export default function OfficeBearerTableOne() {
   }, [dispatch]);
  
   const handleView = (bearer: OfficeBearer) => {
-    setSelectedBearer(bearer);
-    setModalMode("view");
-    openModal();
+    if (!bearer.id) return;
+    router.push(`/office-bearers/${bearer.id}`);
   };
  
   const handleEdit = (bearer: OfficeBearer) => {
-    setSelectedBearer(bearer);
-    setModalMode("edit");
-    openModal();
+    if (!bearer.id) return;
+    router.push(`/office-bearers/${bearer.id}/edit`);
   };
  
   const handleDelete = (bearer: OfficeBearer) => {
@@ -95,22 +96,15 @@ export default function OfficeBearerTableOne() {
       closeModal();
     } catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     } finally {
       setDeleteLoading(false);
     }
   };
  
  
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err) return (err as { message: string }).message;
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
  
  
   return (
@@ -120,6 +114,8 @@ export default function OfficeBearerTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Name</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Designation</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Email</TableCell>
@@ -135,7 +131,7 @@ export default function OfficeBearerTableOne() {
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    {Array(8).fill(0).map((_, j) => (
+                    {Array(10).fill(0).map((_, j) => (
                       <TableCell key={j} className="px-5 py-4">
                         <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                       </TableCell>
@@ -157,6 +153,8 @@ export default function OfficeBearerTableOne() {
               ) : (
                 paginatedBearers.map((bearer, index) => (
                   <TableRow key={bearer.id ?? `bearer-${index}`}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.officeBearer)} />
+                    <TableIdCell id={bearer.id} />
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{bearer.title || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{bearer.designation || "N/A"}</TableCell>
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{bearer.gmail || "N/A"}</TableCell>
@@ -175,26 +173,16 @@ export default function OfficeBearerTableOne() {
                       ) : "N/A"}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
-                      {bearer.data ? (
+                      {getMediaUrl(bearer) ? (
                         <div className="relative w-12 h-12">
                           <Image
-                            src={`data:image/png;base64,${bearer.data}`}
+                            src={getMediaUrl(bearer)}
                             alt={bearer.title}
                             layout="fill"
                             objectFit="cover"
                             className="rounded-[25%]"
                             priority
-                          />
-                        </div>
-                      ) : bearer.file_name ? (
-                        <div className="relative w-12 h-12">
-                          <Image
-                            src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/${bearer.file_name}`}
-                            alt={bearer.title}
-                            layout="fill"
-                            objectFit="cover"
-                            className="rounded-full"
-                            priority
+                            unoptimized
                           />
                         </div>
                       ) : (
@@ -253,14 +241,6 @@ export default function OfficeBearerTableOne() {
  
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-          {modalMode === "edit" && selectedBearer && (
-            <EditBearerForm bearer={selectedBearer as unknown as Bearer} onClose={closeModal} />
-          )}
- 
-          {modalMode === "view" && selectedBearer && (
-            <OfficeBearerView bearer={selectedBearer} onClose={closeModal} />
-          )}
- 
           {modalMode === "delete" && selectedBearer && (
             <DeleteOfficeBearerConfirm
               onConfirm={handleDeleteConfirm}

@@ -3,97 +3,110 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Blog } from "@/types/blogTypes";
-import { Button } from "@/components/ui/button";
+import { getMediaUrl } from "@/utils/mediaUrl";
+import ImagePreviewModal from "@/components/common/ImagePreviewModal";
 
 type BlogViewProps = {
   blog: Blog;
-  onClose: () => void;
+  onClose?: () => void;
 };
 
-export default function BlogView({ blog, onClose }: BlogViewProps) {
-  const [imageModalOpen, setImageModalOpen] = useState(false);
-
-  const handleImageClick = () => {
-    setImageModalOpen(true);
-  };
-
-  const handleImageClose = () => {
-    setImageModalOpen(false);
-  };
-
-  const imageSrc = blog.data
-    ? `data:image/png;base64,${blog.data}`
-    : blog.file_name
-      ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/${blog.file_name}`
-      : null;
+export default function BlogView({ blog }: BlogViewProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const imageSrc = getMediaUrl(blog) || null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">{blog.title || "Untitled Blog"}</h2>
-      </div>
-      {imageSrc ? (
-        <div
-          className="relative w-full h-64 rounded-md overflow-hidden cursor-pointer"
-          onClick={handleImageClick}
-        >
-          <Image
-            src={imageSrc}
-            alt={blog.title}
-            fill
-            objectFit="cover"
-            className="rounded-md"
-            priority
-          />
-        </div>
-      ) : (
-        <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center">
-          No Image
-        </div>
-      )}
+    <div className="relative w-full rounded-2xl bg-white p-5 dark:bg-gray-900 sm:p-6">
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+        {blog.title || "Untitled Blog"}
+      </h2>
 
-
-      {imageModalOpen && imageSrc && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={handleImageClose}
-        >
-          <div
-            className="relative"
-            onClick={(e) => e.stopPropagation()}
+      <div className="mt-6 space-y-4">
+        {imageSrc ? (
+          <button
+            type="button"
+            onClick={() => setSelectedImage(imageSrc)}
+            className="block max-w-[220px] overflow-hidden rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:opacity-90 dark:border-gray-700 dark:bg-gray-800"
+            aria-label={`View ${blog.title || "blog"} image`}
           >
             <Image
               src={imageSrc}
-              alt={blog.title}
-              width={1200}
-              height={800}
-              className="rounded-md max-h-[90vh] object-contain"
+              alt={blog.title || "Blog image"}
+              width={400}
+              height={280}
+              unoptimized
+              className="h-40 w-auto max-w-full rounded-lg object-contain"
+              priority
             />
-            <button
-              onClick={handleImageClose}
-              className="absolute top-2 right-2 z-50 w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center shadow-lg"
-            >
-              ✕
-            </button>
+          </button>
+        ) : (
+          <div className="flex h-40 w-40 items-center justify-center rounded-xl bg-gray-200 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+            No Image
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Category
+            </p>
+            <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+              {blog.category || "N/A"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Tags
+            </p>
+            <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+              {blog.tags || "N/A"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Created By
+            </p>
+            <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+              {blog.creator?.name || "N/A"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Meta Title
+            </p>
+            <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+              {blog.meta_title || "N/A"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800 sm:col-span-2">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Meta Description
+            </p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-base font-medium text-gray-800 dark:text-white">
+              {blog.meta_description || "N/A"}
+            </p>
           </div>
         </div>
-      )}
 
-      <div className="space-y-2">
-        <p><strong>Category:</strong> {blog.category || "N/A"}</p>
-        <p><strong>Tags:</strong> {blog.tags || "N/A"}</p>
-        <p><strong>Created By:</strong> {blog.creator?.name || "N/A"}</p>
-        <p><strong>Meta Title:</strong> {blog.meta_title || "N/A"}</p>
-        <p><strong>Meta Description:</strong> {blog.meta_description || "N/A"}</p>
+        <div>
+          <p className="text-lg font-semibold text-gray-800 dark:text-white">
+            Content
+          </p>
+          <p className="mt-1 whitespace-pre-wrap leading-7 text-gray-600 dark:text-gray-300">
+            {blog.content || "No content available."}
+          </p>
+        </div>
       </div>
-      <div className="border-t pt-4">
-        <h3 className="font-semibold mb-2">Content</h3>
-        <p className="whitespace-pre-wrap">{blog.content || "No content available."}</p>
-      </div>
-      <div className="flex justify-end mt-4">
-        <Button onClick={onClose}>Close</Button>
-      </div>
+
+      <ImagePreviewModal
+        src={selectedImage}
+        alt={blog.title || "Blog image"}
+        onClose={() => setSelectedImage(null)}
+      />
     </div>
   );
 }
-

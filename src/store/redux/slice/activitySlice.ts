@@ -1,4 +1,5 @@
-import { createActivity, deleteActivity, fetchActivityById, fetchAllActivities, updateActivity } from "@/store/api/activityApi";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
+import { createActivity, deleteActivity, deleteActivityImage, fetchActivityById, fetchAllActivities, updateActivity, updateActivityImage } from "@/store/api/activityApi";
 import { Activity, CreateActivityPayload, UpdateActivityPayload } from "@/types/activityTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
@@ -24,9 +25,7 @@ export const fetchAllActivitiesThunk = createAsyncThunk(
         try {
             return await fetchAllActivities();
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to fetch Activities";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to fetch Activities"));
         }
     }
 );
@@ -37,9 +36,7 @@ export const fetchActivityByIdThunk = createAsyncThunk(
         try {
             return await fetchActivityById(id);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to fetch activity";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to fetch activity"));
         }
     }
 );
@@ -50,9 +47,7 @@ export const createActivityThunk = createAsyncThunk(
         try {
             return await createActivity(payload);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to create activity";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to create activity"));
         }
     }
 );
@@ -63,9 +58,7 @@ export const updateActivityThunk = createAsyncThunk(
         try {
             return await updateActivity(payload);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to update activity";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to update activity"));
         }
     }
 );
@@ -77,12 +70,36 @@ export const deleteActivityThunk = createAsyncThunk(
             await deleteActivity(id);
             return id;
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to delete activity";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to delete activity"));
         }
     }
 );
+
+export const editActivityImageThunk = createAsyncThunk<
+    { id: string | number; is_main: boolean },
+    { id: string | number; is_main: boolean },
+    { rejectValue: string }
+>("activities/updateImage", async ({ id, is_main }, { rejectWithValue }) => {
+    try {
+        await updateActivityImage(id, { is_main });
+        return { id, is_main };
+    } catch (err) {
+        return rejectWithValue(getApiErrorMessage(err, "Failed to update image"));
+    }
+});
+
+export const deleteActivityImageThunk = createAsyncThunk<
+    string | number,
+    string | number,
+    { rejectValue: string }
+>("activities/deleteImage", async (id, { rejectWithValue }) => {
+    try {
+        await deleteActivityImage(id);
+        return id;
+    } catch (err) {
+        return rejectWithValue(getApiErrorMessage(err, "Failed to delete image"));
+    }
+});
 
 
 const activitySlice = createSlice({
@@ -107,8 +124,17 @@ const activitySlice = createSlice({
                 state.loading = false;
                 state.error = action.payload as string;
             })
+            .addCase(fetchActivityByIdThunk.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(fetchActivityByIdThunk.fulfilled, (state, action) => {
+                state.loading = false;
                 state.selectedActivity = action.payload;
+            })
+            .addCase(fetchActivityByIdThunk.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             })
             .addCase(createActivityThunk.fulfilled, (state, action) => {
                 state.activities.push(action.payload);
@@ -121,6 +147,38 @@ const activitySlice = createSlice({
             })
             .addCase(deleteActivityThunk.fulfilled, (state, action) => {
                 state.activities = state.activities.filter((s) => s.id !== action.payload);
+            })
+            .addCase(editActivityImageThunk.fulfilled, (state, action) => {
+                const payload = action.payload;
+                const markMain = (images?: Activity["images"]) =>
+                    images?.map((img) => ({
+                        ...img,
+                        is_main: String(img.id) === String(payload.id),
+                    }));
+
+                if (state.selectedActivity?.images) {
+                    const images = markMain(state.selectedActivity.images) || [];
+                    state.selectedActivity.images = images;
+                    state.selectedActivity.main_image =
+                        images.find((img) => img.is_main) || null;
+                }
+                state.activities = state.activities.map((activity) => {
+                    if (String(activity.id) !== String(state.selectedActivity?.id)) return activity;
+                    const images = markMain(activity.images);
+                    return {
+                        ...activity,
+                        images,
+                        main_image: images?.find((img) => img.is_main) || activity.main_image,
+                    };
+                });
+            })
+            .addCase(deleteActivityImageThunk.fulfilled, (state, action) => {
+                const imageId = String(action.payload);
+                if (state.selectedActivity?.images) {
+                    state.selectedActivity.images = state.selectedActivity.images.filter(
+                        (img) => String(img.id) !== imageId
+                    );
+                }
             });
     },
 });

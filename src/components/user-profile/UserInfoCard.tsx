@@ -7,7 +7,7 @@ import Button from "@/components/ui/button/Button";
 import { AppDispatch, RootState } from "@/store/redux/store";
 import { updateUserThunk } from "@/store/redux/slice/userSlice";
 import { setCredentials } from "@/store/redux/slice/authSlice";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
 import { MESSAGES } from "@/components/common/constants/utlis";
 
 
@@ -75,13 +75,7 @@ export default function UserInfoCard() {
 
       showSuccess(MESSAGES.EDIT_SUCCESS);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        showError(err.message || MESSAGES.EDIT_ERROR);
-      } else if (typeof err === "string") {
-        showError(err);
-      } else {
-        showError(MESSAGES.EDIT_ERROR);
-      }
+      showApiError(err, MESSAGES.EDIT_ERROR);
     } finally {
       setLoading(false);
     }

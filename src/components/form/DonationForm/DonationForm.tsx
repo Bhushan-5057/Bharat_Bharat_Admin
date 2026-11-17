@@ -3,13 +3,17 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { addDonation, editDonation, getDonations } from "@/store/redux/slice/donationSlice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { DonationFormData, donationSchema } from "@/validations/donationSchema";
+import { getMediaUrl } from "@/utils/mediaUrl";
+import { Input } from "@/components/ui/input/input";
+import { FormField } from "@/components/ui/form-field";
+import Button from "@/components/ui/button/Button";
 
 
 interface DonationFormProps {
@@ -21,6 +25,7 @@ interface DonationFormProps {
     ifsc_code: string;
     upi_id: string;
     file_name?: string;
+    url?: string | null;
     data?: string;
     creator?: { id: number; name: string };
   };
@@ -53,11 +58,7 @@ export const DonationForm: React.FC<DonationFormProps> = ({
     },
   });
   const [preview, setPreview] = useState<string | null>(
-    initialDonation?.data
-      ? initialDonation.data.startsWith("data:image")
-        ? initialDonation.data
-        : `data:image/jpeg;base64,${initialDonation.data}`
-      : null
+    getMediaUrl(initialDonation) || null
   );
 
   useEffect(() => {
@@ -74,12 +75,8 @@ export const DonationForm: React.FC<DonationFormProps> = ({
   useEffect(() => {
     if (watchFile && watchFile.length > 0) {
       setPreview(URL.createObjectURL(watchFile[0]));
-    } else if (initialDonation?.data) {
-      setPreview(
-        initialDonation.data.startsWith("data:image")
-          ? initialDonation.data
-          : `data:image/jpeg;base64,${initialDonation.data}`
-      );
+    } else if (getMediaUrl(initialDonation)) {
+      setPreview(getMediaUrl(initialDonation));
     }
   }, [watchFile, initialDonation]);
 
@@ -113,11 +110,11 @@ export const DonationForm: React.FC<DonationFormProps> = ({
         dispatch(getDonations());
         onSuccess?.();
       } else {
-        showError((resultAction.payload as string) || "Operation failed");
+        showApiError(resultAction.payload, "Operation failed");
       }
     } catch (err) {
       console.error("Donation save failed", err);
-      showError("Failed to save donation");
+      showApiError(err, "Failed to save donation");
     } finally {
       setLoading(false);
     }
@@ -126,109 +123,61 @@ export const DonationForm: React.FC<DonationFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="
-        max-w-sm mx-auto
-        bg-white dark:bg-neutral-900
-        shadow-md rounded-2xl p-6 space-y-6
-        max-h-[60vh] md:max-h-[70vh]
-        overflow-y-auto
-        custome-scroll
-      "
+      className="mx-auto max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 max-h-[70vh]"
     >
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Account Holder Name</label>
-        <input
-          type="text"
-          {...register("accountHolder")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.accountHolder && (
-          <span className="text-red-500 text-sm mt-1">{errors.accountHolder.message}</span>
-        )}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Account Number</label>
-        <input
-          type="text"
-          {...register("accountNo")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.accountNo && <span className="text-red-500 text-sm mt-1">{errors.accountNo.message}</span>}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Bank Name</label>
-        <input
-          type="text"
-          {...register("bankName")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.bankName && (
-          <span className="text-red-500 text-sm mt-1">{errors.bankName.message}</span>
-        )}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">IFSC Code</label>
-        <input
-          type="text"
-          {...register("ifscCode")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.ifscCode && <span className="text-red-500 text-sm mt-1">{errors.ifscCode.message}</span>}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">UPI ID</label>
-        <input
-          type="text"
-          {...register("upiId")}
-          className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-neutral-800 dark:border-neutral-700"
-        />
-        {errors.upiId && <span className="text-red-500 text-sm mt-1">{errors.upiId.message}</span>}
-      </div>
-      <div className="flex flex-col">
-        <label className="mb-2 font-medium">Upload Image</label>
-        {preview && (
-          <div className="mb-2 relative w-max">
+      <FormField label="Account holder name" htmlFor="accountHolder" required error={errors.accountHolder?.message}>
+        <Input id="accountHolder" placeholder="Enter account holder name" {...register("accountHolder")} />
+      </FormField>
+      <FormField label="Account number" htmlFor="accountNo" required error={errors.accountNo?.message}>
+        <Input id="accountNo" placeholder="Enter account number" {...register("accountNo")} />
+      </FormField>
+      <FormField label="Bank name" htmlFor="bankName" required error={errors.bankName?.message}>
+        <Input id="bankName" placeholder="Enter bank name" {...register("bankName")} />
+      </FormField>
+      <FormField label="IFSC code" htmlFor="ifscCode" required error={errors.ifscCode?.message}>
+        <Input id="ifscCode" placeholder="Enter IFSC code" {...register("ifscCode")} />
+      </FormField>
+      <FormField label="UPI ID" htmlFor="upiId" error={errors.upiId?.message}>
+        <Input id="upiId" placeholder="Enter UPI ID" {...register("upiId")} />
+      </FormField>
+      <FormField
+        label="QR / payment image"
+        htmlFor="donationFileInput"
+        error={errors.imageFile?.message ? String(errors.imageFile.message) : undefined}
+      >
+        {preview ? (
+          <div className="mb-2 relative h-24 w-24 overflow-hidden rounded-lg border border-gray-200">
             <Image
               src={preview}
               alt="Donation"
-              width={96}
-              height={96}
-              className="object-cover rounded-md border"
+              fill
+              className="object-cover"
+              unoptimized
             />
-
             <button
               type="button"
               onClick={() => {
                 setPreview(null);
                 setValue("imageFile", undefined, { shouldValidate: true });
-
                 const fileInput = document.getElementById("donationFileInput") as HTMLInputElement;
                 if (fileInput) {
                   fileInput.value = "";
-                  fileInput.click();
                 }
               }}
-              className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 flex items-center justify-center rounded-full text-sm hover:bg-red-700"
+              className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm text-white hover:bg-red-700"
+              aria-label="Remove image"
             >
               ×
             </button>
-
           </div>
+        ) : (
+          <p className="text-xs text-gray-500">No image uploaded</p>
         )}
-        <input type="file" accept="image/*" {...register("imageFile")} id="donationFileInput" />
-        {errors.imageFile && (
-          <span className="text-red-500 text-sm mt-1">
-            {errors.imageFile.message as string}
-          </span>
-        )}
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-md shadow-md"
-      >
-        {loading ? "Saving..." : mode === "edit" ? "Update Donation" : "Create Donation"}
-      </button>
+        <Input type="file" accept="image/*" {...register("imageFile")} id="donationFileInput" />
+      </FormField>
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? "Saving..." : mode === "edit" ? "Save" : "Save"}
+      </Button>
     </form>
   );
 };

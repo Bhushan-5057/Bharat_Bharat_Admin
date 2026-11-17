@@ -5,63 +5,109 @@ import {
 } from "@/types/eventTypes";
 
 import axiosInstance from "./axiosInstance";
+import { timeToHHMM } from "@/utils/time";
+
+const appendFiles = (
+  formData: FormData,
+  payload: Partial<CreateEventPayload> & Partial<UpdateEventePayload>
+) => {
+  const files = Array.isArray(payload.file_name)
+    ? payload.file_name.filter((file): file is File => file instanceof File)
+    : [];
+
+  files.forEach((file, index) => {
+    formData.append("file_name", file);
+    formData.append(
+      "is_main",
+      payload.mainImageIndex === undefined
+        ? "false"
+        : index === payload.mainImageIndex
+          ? "true"
+          : "false"
+    );
+  });
+};
 
 const buildFormData = (
-  payload: Partial<CreateEventPayload> & { file?: File; id?: string }
+  payload: Partial<CreateEventPayload> & Partial<UpdateEventePayload>
 ) => {
   const formData = new FormData();
 
-  // Always append required fields (even empty string is valid)
-  if (payload.title !== undefined)       formData.append("title",       payload.title);
+  if (payload.title !== undefined) formData.append("title", payload.title);
   if (payload.description !== undefined) formData.append("description", payload.description);
-  if (payload.venue !== undefined)       formData.append("venue",       payload.venue);
-  if (payload.event_date !== undefined)  formData.append("event_date",  payload.event_date);
-  if (payload.start_time !== undefined)  formData.append("start_time",  payload.start_time);
-  if (payload.end_time !== undefined)    formData.append("end_time",    payload.end_time);
+  if (payload.state !== undefined) formData.append("state", payload.state);
+  if (payload.venue !== undefined) formData.append("venue", payload.venue);
+  if (payload.event_date !== undefined) formData.append("event_date", payload.event_date);
+  if ("end_date" in payload) formData.append("end_date", payload.end_date ?? "");
+  if (payload.start_time !== undefined) formData.append("start_time", timeToHHMM(payload.start_time));
+  if (payload.end_time !== undefined) formData.append("end_time", timeToHHMM(payload.end_time));
 
-  // File is optional – only append when a new file is selected
-  if (payload.file_name instanceof File) formData.append("file_name", payload.file_name);
-  if (payload.file instanceof File)      formData.append("file",      payload.file);
+  appendFiles(formData, payload);
 
   return formData;
 };
 
-export const fetchAllEvents = async (): Promise<Event[]> => {
-  const response = await axiosInstance.get(
-    "/integration/get-all"
-  );
+const normalizeEventTimes = (event: Event): Event => ({
+  ...event,
+  start_time: timeToHHMM(event.start_time) || event.start_time,
+  end_time: timeToHHMM(event.end_time) || event.end_time,
+});
 
-  return Array.isArray(response.data)
-    ? response.data
-    : response.data.data || [];
+const unwrapEvent = (data: unknown): Event => {
+  if (data && typeof data === "object" && "data" in data) {
+    const inner = (data as { data: unknown }).data;
+    if (
+      inner &&
+      typeof inner === "object" &&
+      !Array.isArray(inner) &&
+      "id" in inner
+    ) {
+      return normalizeEventTimes(inner as Event);
+    }
+  }
+  return normalizeEventTimes(data as Event);
 };
 
-export const fetchEventById = async (
-  id: string
-): Promise<Event> => {
-  const response = await axiosInstance.get(
-    `/integration/get/${id}`
-  );
+export const fetchAllEvents = async (): Promise<Event[]> => {
+  const response = await axiosInstance.get("/events/get-all");
 
-  return response.data.data || response.data;
+  const body = response.data as
+    | Event[]
+    | {
+        data?: Event[] | { events?: Event[]; integrations?: Event[] };
+        events?: Event[];
+        integrations?: Event[];
+      };
+
+  if (Array.isArray(body)) return body.map(normalizeEventTimes);
+
+  const payload = body.data ?? body;
+
+  if (Array.isArray(payload)) return payload.map(normalizeEventTimes);
+
+  return (payload.events || payload.integrations || []).map(normalizeEventTimes);
+};
+
+export const fetchEventById = async (id: string): Promise<Event> => {
+  const response = await axiosInstance.get(`/events/get/${id}`);
+  return unwrapEvent(response.data);
 };
 
 export const createEvent = async (
   payload: CreateEventPayload
 ): Promise<Event> => {
-  const formData = buildFormData(payload);
+  const formData = buildFormData({
+    ...payload,
+    mainImageIndex: payload.mainImageIndex ?? 0,
+  });
 
-  const response = await axiosInstance.post(
-    "/integration/create",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response = await axiosInstance.post("/events/create", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
-  return response.data.data || response.data;
+  return unwrapEvent(response.data);
 };
 
 export const updateEvent = async (
@@ -70,7 +116,7 @@ export const updateEvent = async (
   const formData = buildFormData(payload);
 
   const response = await axiosInstance.put(
-    `/integration/update/${payload.id}`,
+    `/events/update/${payload.id}`,
     formData,
     {
       headers: {
@@ -79,15 +125,25 @@ export const updateEvent = async (
     }
   );
 
-  return response.data.data || response.data;
+  return unwrapEvent(response.data);
 };
 
 export const deleteEvent = async (
   id: string
 ): Promise<{ message: string }> => {
-  const response = await axiosInstance.delete(
-    `/integration/delete/${id}`
-  );
+  const response = await axiosInstance.delete(`/events/delete/${id}`);
+  return response.data;
+};
 
+export const updateEventImage = async (
+  id: string | number,
+  data: { is_main: boolean }
+) => {
+  const response = await axiosInstance.put(`/events/images/update/${id}`, data);
+  return response.data;
+};
+
+export const deleteEventImage = async (id: string | number) => {
+  const response = await axiosInstance.delete(`/events/images/delete/${id}`);
   return response.data;
 };

@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAllBanners,
@@ -8,7 +9,6 @@ import {
   CreateBannerPayload,
   UpdateBannerPayload,
 } from "@/store/api/bannerApi";
-import { AxiosError } from "axios";
 import { Banner, BannerState } from "@/types/bannerType";
 
 
@@ -29,8 +29,7 @@ export const getBanners = createAsyncThunk<
   try {
     return await fetchAllBanners(params);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch banners");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch banners"));
   }
 });
 
@@ -42,8 +41,7 @@ export const getBannerById = createAsyncThunk<
   try {
     return await fetchBannerById(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch banner");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch banner"));
   }
 });
 
@@ -55,8 +53,7 @@ export const addBanner = createAsyncThunk<
   try {
     return await uploadBanner(file, payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to create banner");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to create banner"));
   }
 });
 
@@ -68,8 +65,7 @@ export const editBanner = createAsyncThunk<
   try {
     return await updateBanner(id, payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to update banner");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update banner"));
   }
 });
 
@@ -81,8 +77,7 @@ export const removeBanner = createAsyncThunk<
   try {
     await deleteBanner(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to delete banner");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete banner"));
   }
 });
 

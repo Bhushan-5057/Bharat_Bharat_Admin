@@ -7,16 +7,19 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField, FormSection } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
 import { useDropzone } from "react-dropzone";
 import { motion } from "motion/react";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { createServiceSchema, CreateServiceFormData } from "@/validations/serviceSchema";
 import { updateServiceThunk, fetchAllServicesThunk } from "@/store/redux/slice/serviceSlice";
 import { UpdateServicePayload } from "@/store/api/serviceApi";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 interface EditServiceFormProps {
   service: {
@@ -24,7 +27,9 @@ interface EditServiceFormProps {
     title: string;
     description?: string;
     file_name?: string;
-    data?: string;
+    url?: string | null;
+    data?: string | null;
+    cloudinary_url?: string | null;
   };
   closeModal?: () => void;
 }
@@ -33,9 +38,7 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
   const dispatch = useDispatch<AppDispatch>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [preview, setPreview] = useState<string | null>(
-    service.data ? `data:image/svg+xml;base64,${service.data}` : service.file_name ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/${service.file_name}` : null
-  );
+  const [preview, setPreview] = useState<string | null>(getMediaUrl(service) || null);
   const [error, setError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateServiceFormData>({
@@ -44,7 +47,7 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
       title: service.title || "",
       description: service.description || "",
       file_name: undefined,
-      existingImage: !!service.file_name || !!service.data,
+      existingImage: !!getMediaUrl(service),
     },
   });
 
@@ -52,7 +55,7 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
     reset({
       title: service.title,
       description: service.description,
-      existingImage: !!service.file_name || !!service.data,
+      existingImage: !!getMediaUrl(service),
     });
   }, [service, reset]);
 
@@ -88,7 +91,7 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
   const handleClick = () => fileInputRef.current?.click();
 
   const onSubmit = async (data: CreateServiceFormData) => {
-    if (files.length === 0 && !service.file_name && !service.data) {
+    if (files.length === 0 && !getMediaUrl(service)) {
       setError("Please select a file or keep existing image");
       return;
     }
@@ -107,42 +110,41 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
       showSuccess(MESSAGES.EDIT_SUCCESS);
       closeModal?.();
       setFiles([]);
-      setPreview(service.data ? `data:image/svg+xml;base64,${service.data}` : service.file_name ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/${service.file_name}` : null);
+      setPreview(getMediaUrl(service) || null);
       reset({
         title: data.title,
         description: data.description,
-        existingImage: !!service.file_name || !!service.data,
+        existingImage: !!getMediaUrl(service),
       });
     } catch (err: unknown) {
-      const message = err && typeof err === "object" && "message" in err
-        ? (err as { message: string }).message
-        : MESSAGES.EDIT_ERROR;
-      console.error("Service update failed", message);
-      showError(message);
+      console.error("Service update failed", err);
+      showApiError(err, MESSAGES.EDIT_ERROR);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
+      <FormSection title="Basic information">
+      <FormField label="Title" htmlFor="title" required error={errors.title?.message}>
         <Input id="title" placeholder="Enter service title" {...register("title")} />
-        {errors.title && <p className="text-red-600 text-sm">{errors.title?.message}</p>}
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <textarea
+      <FormField label="Description" htmlFor="description" error={errors.description?.message}>
+        <Textarea
           id="description"
-          placeholder="Enter service description"
-          className="w-full border rounded-md p-2 text-sm"
+          fieldSize="md"
+          placeholder="Enter a detailed description of the service, including key features"
           {...register("description")}
         />
-        {errors.description && <p className="text-red-600 text-sm">{errors.description?.message}</p>}
-      </div>
+      </FormField>
+      </FormSection>
 
+      <FormSection title="Media">
       <div {...getRootProps()} className="space-y-2">
         <Label>Image (SVG only)</Label>
+        <p className="text-xs text-gray-500">
+          {getMediaUrl(service) && files.length === 0 ? "Current saved image" : "Replace or upload an SVG"}
+        </p>
         <div onClick={handleClick} className="cursor-pointer">
           <input
             ref={fileInputRef}
@@ -180,7 +182,7 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
             ) : isDragActive ? (
               <p>Drop the SVG here...</p>
             ) : (
-              <p>Click or drag SVG</p>
+              <p className="px-3 text-center text-sm text-gray-500">No image uploaded. Click or drag an SVG.</p>
             )}
           </motion.div>
         </div>
@@ -189,14 +191,14 @@ export default function EditServiceForm({ service, closeModal }: EditServiceForm
           <p className="text-red-600 text-sm">{String(errors.file_name.message)}</p>
         )}
       </div>
-
+      </FormSection>
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" type="button" onClick={closeModal} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={isSubmitting}>
-          {isSubmitting ? "Updating..." : "Update"}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save"}
         </Button>
       </div>
     </form>

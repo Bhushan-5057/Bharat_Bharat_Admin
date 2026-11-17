@@ -8,7 +8,7 @@ import { AppDispatch } from "@/store/redux/store";
 import { fetchAllUsersThunk, updateUserThunk } from "@/store/redux/slice/userSlice";
 import { Input } from "@/components/ui/input/input";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { Eye, EyeOff } from "lucide-react";
 import { adminUpdateSchema, AdminUpdateFormData } from "@/validations/adminSchema";
 import { MESSAGES } from "@/components/common/constants/utlis";
@@ -76,11 +76,8 @@ export default function UpdateAdmin({ admin, onClose }: UpdateAdminProps) {
       reset({ name: data.name, password: "" });
       onClose();
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        showError(err.message || MESSAGES.EDIT_ERROR);
-      } else {
-        showError(MESSAGES.EDIT_ERROR);
-      }
+      console.error("Update admin failed:", err);
+      showApiError(err, MESSAGES.EDIT_ERROR);
     } finally {
       setLoading(false);
     }

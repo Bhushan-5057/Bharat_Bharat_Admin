@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MEMBER_CATEGORIES } from "@/types/memberTypes";
 
-const textWithParenthesesRegex = /^[A-Za-z\s.'()\-]+$/;
+const textWithParenthesesRegex = /^[A-Za-z\s.'()&\-]+$/;
 
 export const memberSchema = z
   .object({
@@ -10,23 +10,24 @@ export const memberSchema = z
       .min(1, "Name is required")
       .transform((value) => value.trim())
       .refine((value) => textWithParenthesesRegex.test(value), {
-        message: "Name must contain only letters, spaces and parentheses",
+        message:
+          "Name must contain only letters, spaces, parentheses, ampersand, apostrophe, period, and hyphen",
       }),
+
     category: z.enum(MEMBER_CATEGORIES, {
       required_error: "Category is required",
     }),
-    designation: z
-      .string()
-      .optional(),
+
+    designation: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.category === "national core commitee") {
+    if (data.category === "National Core Commitee") {
       const designation = data.designation?.trim();
 
       if (!designation) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Designation is required for national core commitee",
+          message: "Designation is required for National Core Commitee",
           path: ["designation"],
         });
         return;
@@ -35,7 +36,8 @@ export const memberSchema = z
       if (!textWithParenthesesRegex.test(designation)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Designation must contain only letters, spaces and parentheses",
+          message:
+            "Designation must contain only letters, spaces, parentheses, ampersand, apostrophe, period, and hyphen",
           path: ["designation"],
         });
       }

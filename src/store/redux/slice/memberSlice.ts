@@ -1,5 +1,5 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
 import {
   createMember,
   deleteMember,
@@ -36,21 +36,13 @@ const initialState: MemberState = {
   error: null,
 };
 
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message || error.message || fallback;
-  }
-
-  return error instanceof Error ? error.message : fallback;
-};
-
 export const getMembers = createAsyncThunk<MembersResponse, MemberQueryParams | undefined>(
   "member/getAll",
   async (params, { rejectWithValue }) => {
     try {
       return await fetchAllMembers(params);
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, "Failed to fetch members"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to fetch members"));
     }
   }
 );
@@ -61,7 +53,7 @@ export const getMemberById = createAsyncThunk(
     try {
       return await fetchMemberById(id);
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, "Failed to fetch member"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to fetch member"));
     }
   }
 );
@@ -72,7 +64,7 @@ export const addMember = createAsyncThunk(
     try {
       return await createMember(payload);
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, "Failed to create member"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to create member"));
     }
   }
 );
@@ -86,7 +78,7 @@ export const editMember = createAsyncThunk(
     try {
       return await updateMember(id, payload);
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, "Failed to update member"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to update member"));
     }
   }
 );
@@ -98,7 +90,7 @@ export const removeMember = createAsyncThunk(
       await deleteMember(id);
       return id;
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, "Failed to delete member"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to delete member"));
     }
   }
 );

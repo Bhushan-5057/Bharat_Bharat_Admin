@@ -15,7 +15,7 @@ import CityTable from "@/components/CityTable/CityTable";
 export default function EventTablePage() {
     return (
         <>
-            <PageBreadcrumb pageTitle="Cities" />
+            <PageBreadcrumb pageTitle="Our Presence" />
             <CityTable />
         </>
     );

@@ -7,8 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -17,14 +19,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { MESSAGES } from "../common/constants/utlis";
-import { DonationForm } from "../form/DonationForm/DonationForm";
 import Image from "next/image";
 import { deleteDonation } from "@/store/api/donationApi";
 import { getDonations } from "@/store/redux/slice/donationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
+import { getMediaUrl } from "@/utils/mediaUrl";
  
 interface Donation {
   id: string;
@@ -39,14 +41,17 @@ interface Donation {
     name: string;
   };
   file_name?: string;
-  data?: string;
+  url?: string | null;
+  cloudinary_url?: string | null;
+  data?: string | null;
 }
  
  
 export default function DonationTableOne() {
   const { isOpen, openModal, closeModal } = useModal();
+  const router = useRouter();
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const { donations, loading } = useSelector(
@@ -73,15 +78,13 @@ export default function DonationTableOne() {
   }, [dispatch]);
  
   const handleView = (donation: Donation) => {
-    setSelectedDonation(donation);
-    setModalMode("view");
-    openModal();
+    if (!donation.id) return;
+    router.push(`/donations/${donation.id}`);
   };
  
   const handleEdit = (donation: Donation) => {
-    setSelectedDonation(donation);
-    setModalMode("edit");
-    openModal();
+    if (!donation.id) return;
+    router.push(`/donations/${donation.id}/edit`);
   };
  
   const handleDelete = (donation: Donation) => {
@@ -100,8 +103,8 @@ export default function DonationTableOne() {
       showSuccess(MESSAGES.DELETE_SUCCESS || "Donation deleted successfully");
       closeModal();
     } catch (err) {
-      showError(MESSAGES.DELETE_ERROR || "Failed to delete donation");
       console.log(err);
+      showApiError(err, MESSAGES.DELETE_ERROR || "Failed to delete donation");
     } finally {
       setDeleteLoading(false);
     }
@@ -114,6 +117,8 @@ export default function DonationTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Image</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Account Name</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Bank</TableCell>
@@ -129,6 +134,8 @@ export default function DonationTableOne() {
               {loading ? (
                 [...Array(Math.min(itemsPerPage, donations.length || 1))].map((_, idx) => (
                   <TableRow key={idx}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell className="px-5 py-4">
                       <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
                     </TableCell>
@@ -161,11 +168,13 @@ export default function DonationTableOne() {
               ) : paginatedDonations.length > 0 ? (
                 paginatedDonations.map((donation , index) => (
                   <TableRow key={donation.id || index}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.donation)} />
+                    <TableIdCell id={donation.id} />
                     <TableCell className="px-5 py-4">
-                      {donation.data ? (
+                      {getMediaUrl(donation) ? (
                         <div className="relative w-16 h-16">
                           <Image
-                            src={`data:image/jpeg;base64,${donation.data}`}
+                            src={getMediaUrl(donation)}
                             alt={"Donation"}
                             fill
                             style={{ objectFit: "cover" }}
@@ -202,7 +211,7 @@ export default function DonationTableOne() {
                 ))
               ) : (
                 <TableRow key="no-donations">
-                  <TableCell colSpan={8} className="text-center py-6 text-gray-500 justify-items-center">
+                  <TableCell colSpan={10} className="text-center py-6 text-gray-500 justify-items-center">
                     No donation details added
                   </TableCell>
                 </TableRow>
@@ -242,88 +251,6 @@ export default function DonationTableOne() {
  
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="bg-white p-6 dark:bg-gray-900 rounded-lg">
-          {modalMode === "view" && selectedDonation && (
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custome-scroll">
-              <div className="flex justify-center">
-                {selectedDonation.data ? (
-                  <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border">
-                    <Image
-                      src={`data:image/jpeg;base64,${selectedDonation.data}`}
-                      alt={"Donation"}
-                      fill
-                      style={{ objectFit: "cover" }}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-40 h-40 flex items-center justify-center bg-gray-200 text-gray-500 text-sm rounded-lg border">
-                    No Image
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    Account Name
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.account_holder_name}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">Bank</p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.bank_name}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    Account No
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.account_number}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    IFSC Code
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.ifsc_code}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    UPI ID
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.upi_id}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    Created By
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {selectedDonation.creator?.name || "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
- 
- 
-          {modalMode === "edit" && selectedDonation && (
-            <DonationForm
-              mode="edit"
-              initialDonation={selectedDonation}
-              onSuccess={() => {
-                dispatch(getDonations());
-                closeModal();
-              }}
-            />
-          )}
- 
- 
           {modalMode === "delete" && selectedDonation && (
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-4">Delete Donation?</h3>

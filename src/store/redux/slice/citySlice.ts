@@ -1,8 +1,15 @@
-
+import axios from "axios";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createCity, deleteCity, deleteCitiesImage, fetchAllCities, fetchCityById, updateCity, updateCitiesImage } from "@/store/api/cityApi";
 import { City, CityImage, CreateCityPayload, UpdateCityPayload } from "@/types/cityTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
+
+const rejectApiError = (err: unknown, fallback: string) => {
+    if (axios.isAxiosError(err) && err.response?.data) {
+        return err.response.data;
+    }
+    return getApiErrorMessage(err, fallback);
+};
 
 
 interface CityState {
@@ -26,9 +33,7 @@ export const fetchAllCitiesThunk = createAsyncThunk(
         try {
             return await fetchAllCities();
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to fetch cities";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to fetch cities"));
         }
     }
 );
@@ -39,9 +44,7 @@ export const fetchCityByIdThunk = createAsyncThunk(
         try {
             return await fetchCityById(id);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to fetch city";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to fetch city"));
         }
     }
 );
@@ -52,9 +55,7 @@ export const createCityThunk = createAsyncThunk(
         try {
             return await createCity(payload);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to create city";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(rejectApiError(err, "Failed to create city"));
         }
     }
 );
@@ -65,9 +66,7 @@ export const updateCityThunk = createAsyncThunk(
         try {
             return await updateCity(id, payload);
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to update city";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(rejectApiError(err, "Failed to update city"));
         }
     }
 );
@@ -79,9 +78,7 @@ export const deleteCityThunk = createAsyncThunk(
             await deleteCity(id);
             return id;
         } catch (err: unknown) {
-            const errorMessage =
-                err instanceof Error ? err.message : "Failed to delete city";
-            return rejectWithValue(errorMessage);
+            return rejectWithValue(getApiErrorMessage(err, "Failed to delete city"));
         }
     }
 );
@@ -94,8 +91,7 @@ export const editCitiesImageThunk = createAsyncThunk<
     try {
         return await updateCitiesImage(id, { is_main });
     } catch (err) {
-        const error = err as AxiosError<{ message?: string }>;
-        return rejectWithValue(error.response?.data?.message || "Failed to update image");
+        return rejectWithValue(getApiErrorMessage(err, "Failed to update image"));
     }
 });
 
@@ -108,8 +104,7 @@ export const deleteCityImageThunk = createAsyncThunk<
     try {
         await deleteCitiesImage(String(id));
     } catch (err) {
-        const error = err as AxiosError<{ message?: string }>;
-        return rejectWithValue(error.response?.data?.message || "Failed to delete image");
+        return rejectWithValue(getApiErrorMessage(err, "Failed to delete image"));
     }
 });
 
@@ -136,17 +131,32 @@ const citySlice = createSlice({
                 state.loading = false;
                 state.error = action.payload as string;
             })
+            .addCase(fetchCityByIdThunk.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(fetchCityByIdThunk.fulfilled, (state, action) => {
+                state.loading = false;
                 state.selectedCity = action.payload;
             })
+            .addCase(fetchCityByIdThunk.rejected, (state, action) => {
+                state.loading = false;
+                state.error = getApiErrorMessage(action.payload, "Failed to fetch city");
+            })
             .addCase(createCityThunk.fulfilled, (state, action) => {
-                state.cities.push(action.payload);
+                if (action.payload?.id) {
+                    state.cities.push(action.payload);
+                }
             })
             .addCase(updateCityThunk.fulfilled, (state, action) => {
                 const updated = action.payload;
+                if (!updated?.id) return;
                 state.cities = state.cities.map((s) =>
-                    s.id === updated.id ? updated : s
+                    String(s.id) === String(updated.id) ? { ...s, ...updated } : s
                 );
+                if (state.selectedCity && String(state.selectedCity.id) === String(updated.id)) {
+                    state.selectedCity = { ...state.selectedCity, ...updated };
+                }
             })
             .addCase(deleteCityThunk.fulfilled, (state, action) => {
                 state.cities = state.cities.filter((s) => s.id !== action.payload);

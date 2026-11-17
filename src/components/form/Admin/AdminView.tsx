@@ -18,12 +18,12 @@ interface Admin {
 }
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
   admin: Admin | null;
 }
 
-export default function AdminView({ open, onClose, admin }: Props) {
+export default function AdminView({ admin }: Props) {
   const [displayImage, setDisplayImage] = useState<string>(IMGAGES.PROFILE);
   const users = useSelector((state: RootState) => state.user.users);
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -65,7 +65,7 @@ export default function AdminView({ open, onClose, admin }: Props) {
     }
   }, [admin]);
 
-  if (!open || !admin) return null;
+  if (!admin) return null;
 
   return (
     <div className="space-y-4 p-4">
@@ -97,15 +97,6 @@ export default function AdminView({ open, onClose, admin }: Props) {
         </p>
       </div>
 
-      {/* Close Button */}
-      <div className="pt-2">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium text-gray-800 dark:text-white"
-        >
-          Close
-        </button>
-      </div>
     </div>
   );
 }

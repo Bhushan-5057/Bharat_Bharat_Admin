@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { IMGAGES } from "../common/constants/utlis";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { UserCircleIcon } from "@/icons";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface User {
   name: string;
@@ -26,14 +26,15 @@ export default function UserDropdown() {
 
   const closeDropdown = () => setIsOpen(false);
 
-  const handleLogout = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    e.preventDefault();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
+  const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
     sessionStorage.clear();
     document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
+    setLogoutOpen(false);
     window.location.href = "/signin";
   };
 
@@ -117,14 +118,27 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
 
-        <Link
-          href="/signin"
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        <button
+          type="button"
+          onClick={() => {
+            closeDropdown();
+            setLogoutOpen(true);
+          }}
+          className="flex items-center gap-3 px-3 py-2 mt-3 w-full text-left font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
         >
           Sign out
-        </Link>
+        </button>
       </Dropdown>
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Sign out"
+        description="Are you sure you want to logout?"
+        confirmLabel="Logout"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
     </div>
   );
 }

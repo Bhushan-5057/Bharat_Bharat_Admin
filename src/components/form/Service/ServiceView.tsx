@@ -3,23 +3,21 @@
 import React from "react";
 import Image from "next/image";
 import { Service } from "@/types/serviceTypes";
+import { getMediaUrl } from "@/utils/mediaUrl";
 
 interface Props {
   service: Service | null;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-export default function ServiceView({ service, onClose }: Props) {
+export default function ServiceView({ service }: Props) {
   if (!service) return null;
 
-
-  const imageSrc = service.data
-    ? `data:image/${service.file_name?.endsWith(".svg") ? "svg+xml" : "png"};base64,${service.data}`
-    : "/placeholder.png"; 
+  const imageSrc = getMediaUrl(service) || "/placeholder.png";
 
   return (
     <div className="space-y-4 p-4">
-      
+
       <div className="flex items-center gap-4">
         <Image
           src={imageSrc}
@@ -33,10 +31,10 @@ export default function ServiceView({ service, onClose }: Props) {
         </div>
       </div>
 
-      
+
       <div className="space-y-2">
         {service.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="whitespace-pre-wrap break-words text-sm text-gray-600 dark:text-gray-300">
             <span className="font-semibold text-gray-800 dark:text-white">Description:</span>{" "}
             {service.description}
           </p>
@@ -47,17 +45,7 @@ export default function ServiceView({ service, onClose }: Props) {
         </p>
       </div>
 
-    
-      <div className="pt-2">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 
-                     dark:bg-gray-700 dark:hover:bg-gray-600 
-                     text-sm font-medium text-gray-800 dark:text-white"
-        >
-          Close
-        </button>
-      </div>
+
     </div>
   );
 }

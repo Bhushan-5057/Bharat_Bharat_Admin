@@ -7,10 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -19,12 +21,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-import AdminView from "../form/Admin/AdminView";
-import UpdateAdmin from "../form/Admin/UpdateAdmin";
 import DeleteAdminConfirm from "../form/Admin/DeleteConfirm";
 
 import { deleteUserThunk, fetchAllUsersThunk } from "@/store/redux/slice/userSlice";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { User } from "@/store/redux/slice/userSlice";
 import { MESSAGES } from "../common/constants/utlis";
 
@@ -32,10 +33,11 @@ import { MESSAGES } from "../common/constants/utlis";
 
 export default function AdminTableOne() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const { users = [], loading, error } = useSelector((state: RootState) => state.user);
@@ -71,15 +73,13 @@ export default function AdminTableOne() {
   }, [dispatch]);
 
   const handleView = (user: User) => {
-    setSelectedUser(user);
-    setModalMode("view");
-    openModal();
+    if (!user.id) return;
+    router.push(`/admins/${user.id}`);
   };
 
   const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setModalMode("edit");
-    openModal();
+    if (!user.id) return;
+    router.push(`/admins/${user.id}/edit`);
   };
 
   const handleDelete = (user: User) => {
@@ -100,24 +100,15 @@ export default function AdminTableOne() {
     }
     catch (err: unknown) {
       console.error("Delete failed:", err);
-      const errorMessage =
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     }
     finally {
       setDeleteLoading(false);
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object" && "message" in err) {
-    return (err as { message: string }).message;
-  }
-  return JSON.stringify(err);
-};
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
 const formatRole = (role?: string) => {
   if (role === "super_admin") return "Super Admin";
@@ -154,6 +145,8 @@ const formatCreatedBy = (user: User) => {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Name</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Email</TableCell>
                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Role</TableCell>
@@ -167,6 +160,8 @@ const formatCreatedBy = (user: User) => {
 
                 [...Array(5)].map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell className="px-5 py-4">
                       <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                     </TableCell>
@@ -199,8 +194,10 @@ const formatCreatedBy = (user: User) => {
                   <TableCell className="text-center py-6 text-gray-500">No users found.</TableCell>
                 </TableRow>
               ) : (
-                paginatedUsers.map((user) => (
+                paginatedUsers.map((user, index) => (
                   <TableRow key={user.id}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.admin)} />
+                    <TableIdCell id={user.id} />
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">{user.name}</TableCell>
                     <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{user.email}</TableCell>
                     <TableCell className="px-5 py-4 text-sm text-black dark:text-white">{formatRole(user.role)}</TableCell>
@@ -262,8 +259,6 @@ const formatCreatedBy = (user: User) => {
 
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-          {modalMode === "view" && selectedUser && <AdminView admin={selectedUser} open={isOpen} onClose={closeModal} />}
-          {modalMode === "edit" && selectedUser && <UpdateAdmin admin={selectedUser} onClose={closeModal} />}
           {modalMode === "delete" && selectedUser && <DeleteAdminConfirm onConfirm={handleDeleteConfirm} onCancel={closeModal} loading={deleteLoading} />}
         </div>
       </Modal>

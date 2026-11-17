@@ -2,9 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      { source: "/education-table", destination: "/achievements-table", permanent: true },
+      { source: "/education/:id", destination: "/achievements/:id", permanent: true },
+      { source: "/education", destination: "/achievements-table", permanent: true },
+      { source: "/integration-table", destination: "/event-table", permanent: true },
+      { source: "/integration/:path*", destination: "/event-table", permanent: true },
+      { source: "/integration", destination: "/event-table", permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.pixabay.com" },
+      { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
       { protocol: "http", hostname: "192.168.**", pathname: "/**" },
       { protocol: "http", hostname: "localhost", pathname: "/**" },
       { protocol: "http", hostname: "127.0.0.1", pathname: "/**" },

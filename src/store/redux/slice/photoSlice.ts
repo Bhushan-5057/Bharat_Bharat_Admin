@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAllPhotos,
@@ -9,7 +10,6 @@ import {
   UpdatePhotoPayload,
   Photo,
 } from "@/store/api/photoApi";
-import { AxiosError } from "axios";
 
 
 interface PhotoState {
@@ -35,8 +35,7 @@ export const getPhotos = createAsyncThunk<
   try {
     return await fetchAllPhotos(params);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch photos");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch photos"));
   }
 });
 
@@ -49,8 +48,7 @@ export const getPhotoById = createAsyncThunk<
   try {
     return await fetchPhotoById(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch photo");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to fetch photo"));
   }
 });
 
@@ -63,8 +61,7 @@ export const addPhoto = createAsyncThunk<
   try {
     return await uploadPhoto(file, payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to create photo");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to create photo"));
   }
 });
 
@@ -77,8 +74,7 @@ export const editPhoto = createAsyncThunk<
   try {
     return await updatePhoto(id, payload);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to update photo");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update photo"));
   }
 });
 
@@ -91,8 +87,7 @@ export const removePhoto = createAsyncThunk<
   try {
     await deletePhoto(id);
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue(error.response?.data?.message || "Failed to delete photo");
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete photo"));
   }
 });
 

@@ -8,15 +8,11 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-
 import { Eye, Pencil, Trash2 } from "lucide-react";
-
 import { useDispatch, useSelector } from "react-redux";
-
+import { useRouter } from "next/navigation";
 import { RootState, AppDispatch } from "@/store/redux/store";
-
 import { useModal } from "@/hooks/useModal";
-
 import {
   Pagination,
   PaginationContent,
@@ -24,53 +20,33 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
-
-import { showError, showSuccess } from "@/lib/utils/toast";
-
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
-
 import { Modal } from "../ui/modal";
-
 import Image from "next/image";
-
+import { getDisplayImageUrl } from "@/utils/mediaUrl";
 import {
   deleteEventThunk,
   fetchAllEventsThunk,
 } from "@/store/redux/slice/eventSlice";
-
-import EventView from "../form/event/EventView";
-
-import EditEventForm from "../form/event/EditEventForm";
-
 import DeleteEventConfirm from "../form/event/DeleteConfirm";
-
 import { Event } from "@/types/eventTypes";
+import { formatTime12h } from "@/utils/time";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 
 export default function EventTableOne() {
   const dispatch = useDispatch<AppDispatch>();
-
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
-
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-
-  const [modalMode, setModalMode] = useState<
-    "view" | "edit" | "delete" | null
-  >(null);
-
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const { events, loading, error } = useSelector(
-    (state: RootState) => state.events
-  );
-
+  const { events, loading, error } = useSelector((state: RootState) => state.events);
   const eventList: Event[] = Array.isArray(events) ? events : [];
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const itemsPerPage = 5;
-
-  const totalPages =
-    Math.ceil(eventList.length / itemsPerPage) || 1;
+  const totalPages = Math.ceil(eventList.length / itemsPerPage) || 1;
 
   const paginatedEvents = eventList.slice(
     (currentPage - 1) * itemsPerPage,
@@ -97,44 +73,13 @@ export default function EventTableOne() {
     });
   };
 
-  const formatTime = (value?: string) => {
-    if (!value) return "-";
-
-    const [hourText = "0", minuteText = "0"] = value.split(":");
-
-    const hour = Number(hourText);
-
-    const minute = Number(minuteText);
-
-    if (
-      Number.isNaN(hour) ||
-      Number.isNaN(minute) ||
-      hour < 0 ||
-      hour > 23 ||
-      minute < 0 ||
-      minute > 59
-    ) {
-      return value;
-    }
-
-    const date = new Date();
-
-    date.setHours(hour, minute, 0, 0);
-
-    return date.toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
   const formatTimeRange = (
     startTime?: string,
     endTime?: string
   ) => {
     if (!startTime || !endTime) return "-";
 
-    return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+    return `${formatTime12h(startTime, "-")} - ${formatTime12h(endTime, "-")}`;
   };
 
   useEffect(() => {
@@ -142,19 +87,13 @@ export default function EventTableOne() {
   }, [dispatch]);
 
   const handleView = (event: Event) => {
-    setSelectedEvent(event);
-
-    setModalMode("view");
-
-    openModal();
+    if (!event.id) return;
+    router.push(`/events/${event.id}`);
   };
 
   const handleEdit = (event: Event) => {
-    setSelectedEvent(event);
-
-    setModalMode("edit");
-
-    openModal();
+    if (!event.id) return;
+    router.push(`/events/${event.id}/edit`);
   };
 
   const handleDelete = (event: Event) => {
@@ -169,56 +108,37 @@ export default function EventTableOne() {
     if (!selectedEvent) return;
 
     setDeleteLoading(true);
-try {
-  await dispatch(deleteEventThunk(selectedEvent.id)).unwrap();
+    try {
+      await dispatch(deleteEventThunk(selectedEvent.id)).unwrap();
 
-  const res = await dispatch(fetchAllEventsThunk()).unwrap();
+      const res = await dispatch(fetchAllEventsThunk()).unwrap();
 
-  const updatedEvents: Event[] = Array.isArray(res)
-    ? res
-    : Array.isArray((res as { data?: Event[] })?.data)
-    ? (res as { data?: Event[] }).data || []
-    : [];
+      const updatedEvents: Event[] = Array.isArray(res)
+        ? res
+        : Array.isArray((res as { data?: Event[] })?.data)
+          ? (res as { data?: Event[] }).data || []
+          : [];
 
-  const newTotalPages =
-    Math.ceil(updatedEvents.length / itemsPerPage) || 1;
+      const newTotalPages =
+        Math.ceil(updatedEvents.length / itemsPerPage) || 1;
 
-  if (currentPage > newTotalPages) {
-    setCurrentPage(newTotalPages);
-  }
+      if (currentPage > newTotalPages) {
+        setCurrentPage(newTotalPages);
+      }
 
-  showSuccess(MESSAGES.DELETE_SUCCESS);
+      showSuccess("Event deleted successfully");
 
-  closeModal();
-} catch (err: unknown) {
+      closeModal();
+    } catch (err: unknown) {
       console.error("Delete failed:", err);
-
-      const errorMessage =
-        err &&
-        typeof err === "object" &&
-        "message" in err
-          ? (err as { message: string }).message
-          : MESSAGES.DELETE_ERROR;
-
-      showError(errorMessage);
+      showApiError(err, MESSAGES.DELETE_ERROR);
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-
-    if (
-      err &&
-      typeof err === "object" &&
-      "message" in err
-    ) {
-      return (err as { message: string }).message;
-    }
-
-    return JSON.stringify(err);
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -227,6 +147,8 @@ try {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell
                   isHeader
                   className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white"
@@ -259,7 +181,7 @@ try {
                   isHeader
                   className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white"
                 >
-                  Venue
+                  State / City
                 </TableCell>
 
                 <TableCell
@@ -289,6 +211,8 @@ try {
               {loading ? (
                 [...Array(itemsPerPage)].map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
+                    <TableSerialSkeletonCell />
+                    <TableIdSkeletonCell />
                     <TableCell>
                       <div className="h-4 w-32 rounded bg-gray-200 animate-pulse"></div>
                     </TableCell>
@@ -342,7 +266,9 @@ try {
                 </TableRow>
               ) : (
                 paginatedEvents.map((event, index: number) => (
-                  <TableRow key={index}>
+                  <TableRow key={event.id ?? index}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.event)} />
+                    <TableIdCell id={event.id} />
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
                       {event.title
                         ? event.title.length > 30
@@ -360,7 +286,9 @@ try {
                     </TableCell>
 
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
-                      {formatDate(event.event_date)}
+                      {event.end_date && event.end_date !== event.event_date
+                        ? `${formatDate(event.event_date)} - ${formatDate(event.end_date)}`
+                        : formatDate(event.event_date)}
                     </TableCell>
 
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
@@ -371,22 +299,18 @@ try {
                     </TableCell>
 
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
-                      {event.venue
-                        ? event.venue.length > 30
-                          ? event.venue.slice(0, 30) + "..."
-                          : event.venue
+                      {[event.state, event.venue].filter(Boolean).join(" · ")
+                        ? [event.state, event.venue].filter(Boolean).join(" · ").length > 30
+                          ? [event.state, event.venue].filter(Boolean).join(" · ").slice(0, 30) + "..."
+                          : [event.state, event.venue].filter(Boolean).join(" · ")
                         : "-"}
                     </TableCell>
 
                     <TableCell className="px-5 py-4">
-                      {event.data ? (
+                      {getDisplayImageUrl(event) ? (
                         <div className="relative w-16 h-16 rounded-md overflow-hidden">
                           <Image
-                            src={`data:image/${
-                              event.file_name?.endsWith(".svg")
-                                ? "svg+xml"
-                                : "png"
-                            };base64,${event.data}`}
+                            src={getDisplayImageUrl(event)}
                             alt={event.title}
                             fill
                             className="object-cover"
@@ -475,20 +399,6 @@ try {
         className="m-2 w-[calc(100vw-1rem)] max-w-[620px] sm:m-4 sm:w-[calc(100vw-2rem)]"
       >
         <div className="relative">
-          {modalMode === "view" && selectedEvent && (
-            <EventView
-              event={selectedEvent}
-              onClose={closeModal}
-            />
-          )}
-
-          {modalMode === "edit" && selectedEvent && (
-            <EditEventForm
-              event={selectedEvent}
-              closeModal={closeModal}
-            />
-          )}
-
           {modalMode === "delete" && selectedEvent && (
             <DeleteEventConfirm
               onConfirm={handleDeleteConfirm}

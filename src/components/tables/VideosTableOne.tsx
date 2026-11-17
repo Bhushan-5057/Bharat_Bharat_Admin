@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Eye, Pencil, Trash2, Video as VideoIcon } from "lucide-react";
 import {
   Pagination,
@@ -11,13 +12,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
 import { getVideos, removeVideo, Video } from "@/store/redux/slice/videoSlice";
-import { VideoUploadForm } from "../form/VideoUploadForm/VideoUploadForm";
 import { MESSAGES } from "../common/constants/utlis";
-import { showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 
 export default function VideosTableOne() {
   const dispatch = useDispatch<AppDispatch>();
@@ -27,11 +28,10 @@ export default function VideosTableOne() {
   const itemsPerPage = 5;
 
   const { isOpen, openModal, closeModal } = useModal();
+  const router = useRouter();
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+  const [modalMode, setModalMode] = useState<"delete" | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [videoLoading, setVideoLoading] = useState(true);
-
 
   useEffect(() => {
     dispatch(getVideos());
@@ -48,15 +48,13 @@ export default function VideosTableOne() {
   };
 
   const handleView = (video: Video) => {
-    setSelectedVideo(video);
-    setModalMode("view");
-    openModal();
+    if (!video.id) return;
+    router.push(`/gallery/videos/${video.id}`);
   };
 
   const handleEdit = (video: Video) => {
-    setSelectedVideo(video);
-    setModalMode("edit");
-    openModal();
+    if (!video.id) return;
+    router.push(`/gallery/videos/${video.id}/edit`);
   };
 
   const handleDelete = (video: Video) => {
@@ -74,6 +72,7 @@ export default function VideosTableOne() {
       closeModal();
     } catch (err) {
       console.error("Delete failed:", err);
+      showApiError(err, MESSAGES.DELETE_ERROR || "Failed to delete video");
     } finally {
       setDeleteLoading(false);
     }
@@ -84,50 +83,14 @@ export default function VideosTableOne() {
     return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
   };
 
-  const getEmbedUrl = (url?: string) => {
-    if (!url) return "";
-    try {
-      const urlObj = new URL(url);
-      const videoId = urlObj.searchParams.get("v");
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
-    } catch {
-      return url;
-    }
-  };
-
-  const timeAgo = (dateString?: string) => {
-    if (!dateString) return "N/A";
-
-    const now = new Date();
-    const past = new Date(dateString);
-    const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds} sec${diffInSeconds !== 1 ? "s" : ""} ago`;
-    } else if (diffInSeconds < 3600) {
-      const mins = Math.floor(diffInSeconds / 60);
-      return `${mins} min${mins !== 1 ? "s" : ""} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hrs = Math.floor(diffInSeconds / 3600);
-      return `${hrs} hr${hrs !== 1 ? "s" : ""} ago`;
-    } else {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} day${days !== 1 ? "s" : ""} ago`;
-    }
-  };
-
-  useEffect(() => {
-    if (selectedVideo) {
-      setVideoLoading(true);
-    }
-  }, [selectedVideo]);
-
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-left">
             <TableRow>
+              <TableSerialHeader />
+              <TableIdHeader />
               <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Video</TableCell>
               <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">File Name</TableCell>
               <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">Created By</TableCell>
@@ -139,6 +102,8 @@ export default function VideosTableOne() {
             {loading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
+                  <TableSerialSkeletonCell />
+                  <TableIdSkeletonCell />
                   <TableCell className="px-5 py-4">
                     <div className="w-6 h-6 bg-gray-300 rounded-md animate-pulse"></div>
                   </TableCell>
@@ -159,19 +124,21 @@ export default function VideosTableOne() {
               ))
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-6 text-red-500">
+                <TableCell colSpan={6} className="text-center py-6 text-red-500">
                   Error loading videos.
                 </TableCell>
               </TableRow>
             ) : paginatedVideos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                   No videos found.
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedVideos.map((video: Video) => (
+              paginatedVideos.map((video: Video, index) => (
                 <TableRow key={video.id}>
+                  <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.video)} />
+                  <TableIdCell id={video.id} />
                   <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white flex justify-start">
                     <VideoIcon size={24} className="text-gray-600 dark:text-gray-300 cursor-pointer" onClick={() => handleView(video)} />
                   </TableCell>
@@ -248,86 +215,31 @@ export default function VideosTableOne() {
           </div>
         )}
       </div>
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
-        <div className="relative w-full max-h-[80vh] overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-
-
-          {modalMode === "view" && selectedVideo && (
-            <div className="relative w-full pt-[56.25%]">
-              {videoLoading && (
-                <div className="absolute top-0 left-0 w-full h-full rounded-md bg-gray-300 dark:bg-gray-700 animate-pulse z-10" >
-                  <div
-                    className="w-full h-full animate-pulse"
-                    style={{
-                      background: "linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)",
-                      backgroundSize: "200% 100%",
-                      animation: "shimmer 1.5s infinite",
-                    }}
-                  />
-                </div>
-              )}
-
-              <iframe
-                src={getEmbedUrl(selectedVideo.youtube_url)}
-                title={selectedVideo.description || "YouTube video"}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className={`absolute top-0 left-0 w-full h-full rounded-md transition-opacity duration-300 ${videoLoading ? "opacity-0" : "opacity-100"
-                  }`}
-                onLoad={() => setVideoLoading(false)}
-              />
-            </div>
-          )}
-
-          {modalMode === "view" && selectedVideo && (
-            <p className="mt-4 text-gray-700 dark:text-gray-300">
-              Uploaded at: {timeAgo(selectedVideo.createdAt)}
-            </p>
-          )}
-
-
-          {modalMode === "edit" && selectedVideo && (
-            <VideoUploadForm
-              initialVideo={{
-                id: selectedVideo.id,
-                youtube_url: selectedVideo.youtube_url || "",
-                description: selectedVideo.description || "",
-              }}
-              mode="edit"
-              onSuccess={() => {
-                closeModal();
-                dispatch(getVideos());
-              }}
-            />
-          )}
-
-
-
+      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[500px] m-4">
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg text-center">
           {modalMode === "delete" && selectedVideo && (
-            <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[500px] m-4">
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg text-center">
-                <h3 className="text-lg font-semibold mb-4">Delete Video?</h3>
-                <p>
-                  Are you sure you want to delete{" "}
-                  <strong>{selectedVideo.description || "this video"}</strong>?
-                </p>
-                <div className="flex justify-center gap-4 mt-4">
-                  <button
-                    onClick={handleDeleteConfirm}
-                    disabled={deleteLoading}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md"
-                  >
-                    {deleteLoading ? "Deleting..." : "Yes, Delete"}
-                  </button>
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 bg-gray-300 rounded-md"
-                  >
-                    Cancel
-                  </button>
-                </div>
+            <>
+              <h3 className="text-lg font-semibold mb-4">Delete Video?</h3>
+              <p>
+                Are you sure you want to delete{" "}
+                <strong>{selectedVideo.description || "this video"}</strong>?
+              </p>
+              <div className="flex justify-center gap-4 mt-4">
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md"
+                >
+                  {deleteLoading ? "Deleting..." : "Yes, Delete"}
+                </button>
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-gray-300 rounded-md"
+                >
+                  Cancel
+                </button>
               </div>
-            </Modal>
+            </>
           )}
         </div>
       </Modal>

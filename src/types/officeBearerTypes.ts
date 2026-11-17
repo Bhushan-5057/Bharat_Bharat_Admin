@@ -6,8 +6,12 @@ export interface OfficeBearer {
   facebook?: string;
   twitter?: string;
   quotes?: string;
-  data?: string;        
-  file_name?: string;   
+  data?: string | null;
+  file_name?: string;
+  url?: string | null;
+  cloudinary_url?: string | null;
+  cloudinary_public_id?: string | null;
+  cloudinary_resource_type?: "image" | "video" | "raw" | null;
   creator?: { name?: string };
   createdAt?: string;
   updatedAt?: string;

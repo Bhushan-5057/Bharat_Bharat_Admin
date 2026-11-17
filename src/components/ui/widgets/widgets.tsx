@@ -105,7 +105,7 @@ export function Widgets() {
             <BookOpen className="w-7 h-7" />
           </div>
         </div>
-        <p className="text-lg font-medium text-gray-800 dark:text-white">Total Publications</p>
+        <p className="text-lg font-medium text-gray-800 dark:text-white">Total Certificates</p>
         <div className="h-[50px] flex items-center justify-start">
           {loading ? (
             <NewtonsCradleLoader />
@@ -115,7 +115,7 @@ export function Widgets() {
             </p>
           )}
         </div>
-        <Link href="/publication-table" className="text-lg sm:text-sm text-indigo-600 hover:underline mt-1 flex gap-2 items-center">
+        <Link href="/certificates-table" className="text-lg sm:text-sm text-indigo-600 hover:underline mt-1 flex gap-2 items-center">
           View All <ArrowRight size={14} />
         </Link>
       </div>

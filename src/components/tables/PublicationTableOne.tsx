@@ -11,6 +11,7 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 
 import {
     Pagination,
@@ -20,24 +21,25 @@ import {
     PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
 
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { IMGAGES, MESSAGES } from "../common/constants/utlis";
 import { Modal } from "../ui/modal";
 import DeletePublicationConfirm from "../form/Publications/DeletePublicationConfirm";
-import AddPublicationForm from "../form/Publications/AddPublicationForm";
-import { getPublicationById, getPublications, removePublication } from "@/store/redux/slice/publicationSlice";
-import { err } from "@/types/authTypes";
-import { fetchPublicationById } from "@/store/api/publicationsApi";
+import { getPublications, removePublication } from "@/store/redux/slice/publicationSlice";
 import { Publication } from "@/types/publicationTypes";
+import { openCertificatePdf } from "@/utils/certificateUrl";
+import { TableIdCell, TableIdHeader, TableIdSkeletonCell, TableSerialCell, TableSerialHeader, TableSerialSkeletonCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import Image from "next/image";
 
 
 export default function PublicationTableOne() {
     const dispatch = useDispatch<AppDispatch>();
+    const router = useRouter();
     const { isOpen, openModal, closeModal } = useModal();
 
     const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null);
-    const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+    const [modalMode, setModalMode] = useState<"delete" | null>(null);
     const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
     const { publications, loading, error } = useSelector(
@@ -64,41 +66,15 @@ export default function PublicationTableOne() {
     };
 
 
-    const handleOpenPublication = async (id: number) => {
-        if (!id) return;
-        const reduxResult = await dispatch(getPublicationById(id)).unwrap();
-        const { pdfData, fileName } = await fetchPublicationById(id);
-        const blob = new Blob([pdfData], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        if (isMobile) {
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = fileName || "document.pdf";
-            link.target = "_blank";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } else {
-            const newWindow = window.open("", "_blank");
-            if (newWindow) {
-                newWindow.document.title = fileName || reduxResult.fileName;;
-                newWindow.document.write(`
-          <head><title>${fileName}</title></head>
-          <body style="margin:0">
-            <iframe src="${url}" width="100%" height="100%" style="border:none;"></iframe>
-          </body>
-        `);
-            }
+    const handleView = (pub: Publication) => {
+        if (!openCertificatePdf(pub)) {
+            showError("PDF is not available");
         }
     };
 
     const handleEdit = (publication: Publication) => {
-        setSelectedPublication(publication);
-        setModalMode("edit");
-        openModal();
+        if (!publication.id) return;
+        router.push(`/certificates/${publication.id}/edit`);
     };
 
     const handleDelete = (publication: Publication) => {
@@ -125,14 +101,14 @@ export default function PublicationTableOne() {
             closeModal();
         } catch (err: unknown) {
             console.error("Delete failed:", err);
-            showError(MESSAGES.DELETE_ERROR);
+            showApiError(err, MESSAGES.DELETE_ERROR);
         } finally {
             setDeleteLoading(false);
         }
     };
 
-    const renderErrorMessage = (err: err | string) =>
-        typeof err === "string" ? err : err?.message || JSON.stringify(err);
+    const renderErrorMessage = (err: unknown) =>
+        getApiErrorMessage(err, "Something went wrong");
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -140,7 +116,9 @@ export default function PublicationTableOne() {
                 <div className="min-w-[800px]">
                     <Table>
                         <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                            <TableRow>
+              <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                                 <TableCell isHeader className="px-5 py-3 text-start text-sm font-medium text-black dark:text-white">
                                     PDF
                                 </TableCell>
@@ -160,6 +138,8 @@ export default function PublicationTableOne() {
                             {loading
                                 ? [...Array(itemsPerPage)].map((_, i) => (
                                     <TableRow key={`skeleton-${i}`}>
+                                        <TableSerialSkeletonCell />
+                                        <TableIdSkeletonCell />
                                         <TableCell className="px-5 py-4">
                                             <div className="flex items-center justify-center h-16 w-16 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                                         </TableCell>
@@ -181,7 +161,7 @@ export default function PublicationTableOne() {
                                 : error
                                     ? (
                                         <TableRow key="error-row">
-                                            <TableCell colSpan={4} className="text-center py-6 text-red-500">
+                                            <TableCell colSpan={6} className="text-center py-6 text-red-500">
                                                 Error loading publications: {renderErrorMessage(error)}
                                             </TableCell>
                                         </TableRow>
@@ -189,13 +169,15 @@ export default function PublicationTableOne() {
                                     : publications.length === 0
                                         ? (
                                             <TableRow key="no-data-row">
-                                                <TableCell colSpan={4} className="text-center py-6 text-gray-500">
-                                                    No publications found.
+                                                <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                                                    No certificates found.
                                                 </TableCell>
                                             </TableRow>
                                         )
                                         : paginatedData.map((pub, index: number) => (
-                                            <TableRow key={index}>
+                                            <TableRow key={pub.id ?? index}>
+                                                <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.certificate)} />
+                                                <TableIdCell id={pub.id} />
                                                 <TableCell className="px-5 py-4">
                                                     <div className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                                                         <Image
@@ -212,7 +194,7 @@ export default function PublicationTableOne() {
                                                 <TableCell className="px-5 py-4">{pub.creator?.name || "Unknown"}</TableCell>
                                                 <TableCell className="px-5 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <button onClick={() => handleOpenPublication(pub?.id)} title="View">
+                                                        <button onClick={() => handleView(pub)} title="View PDF">
                                                             <Eye size={16} className="cursor-pointer hover:text-blue-600" />
                                                         </button>
                                                         <button onClick={() => handleEdit(pub)} title="Edit">
@@ -263,13 +245,6 @@ export default function PublicationTableOne() {
                             onConfirm={handleDeleteConfirm}
                             onCancel={closeModal}
                             loading={deleteLoading}
-                        />
-                    )}
-                    {modalMode === "edit" && selectedPublication && (
-                        <AddPublicationForm
-                            closeModal={closeModal}
-                            publicationId={selectedPublication.id}
-                            selectedPublication={selectedPublication}
                         />
                     )}
                 </div>

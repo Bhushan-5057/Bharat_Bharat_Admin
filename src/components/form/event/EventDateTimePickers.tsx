@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { TimeInput } from "@/components/ui/time-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover/popover";
 
 interface EventDatePickerProps {
@@ -71,36 +72,16 @@ const parseDateValue = (value?: string) => {
     return normalizeDate(parsed);
 };
 
-const parseTimeValue = (value?: string) => {
-    if (!value) return { hour: 0, minute: 0 };
-    const [hourText = "0", minuteText = "0"] = value.split(":");
-    const hour = Number(hourText);
-    const minute = Number(minuteText);
-
-    return {
-        hour: Number.isNaN(hour) ? 0 : Math.min(Math.max(hour, 0), 23),
-        minute: Number.isNaN(minute) ? 0 : Math.min(Math.max(minute, 0), 59),
-    };
-};
-
-/** Convert "HH:MM" to total minutes */
-const timeToMinutes = (time?: string): number | null => {
-    if (!time) return null;
-    const [h, m] = time.split(":").map(Number);
-    if (isNaN(h) || isNaN(m)) return null;
-    return h * 60 + m;
-};
-
-const formatTime = (hour: number, minute: number) =>
-    `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-
-const clampMonthToMin = (date: Date, minDate: Date) => {
+const clampMonthToMin = (date: Date, minDate?: Date | null) => {
+    if (!minDate) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
     const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
     const minStart = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
     return monthStart < minStart ? minStart : monthStart;
 };
 
-const buildCalendarCells = (viewMonth: Date, minDate: Date) => {
+const buildCalendarCells = (viewMonth: Date, minDate?: Date | null) => {
     const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
     const mondayIndex = (firstDay.getDay() + 6) % 7;
     const start = new Date(firstDay);
@@ -116,7 +97,7 @@ const buildCalendarCells = (viewMonth: Date, minDate: Date) => {
             value: toDateOnly(normalized),
             label: normalized.getDate(),
             inCurrentMonth: normalized.getMonth() === viewMonth.getMonth(),
-            disabled: normalized < minDate,
+            disabled: minDate ? normalized < minDate : false,
         });
     }
     return cells;
@@ -129,14 +110,13 @@ export function EventDatePicker({ id, value, minDate, onChange }: EventDatePicke
     const [open, setOpen] = useState(false);
     const today = useMemo(() => normalizeDate(new Date()), []);
 
-    const minDateObject = useMemo(() => {
-        const parsedMinDate = parseDateValue(minDate);
-        return parsedMinDate ?? today;
-    }, [minDate, today]);
+    // Only enforce a floor when callers pass minDate. Do not default to today —
+    // Activities/Events must allow historical (past) dates.
+    const minDateObject = useMemo(() => parseDateValue(minDate), [minDate]);
 
     const selectedDate = parseDateValue(value);
     const [viewMonth, setViewMonth] = useState<Date>(
-        clampMonthToMin(selectedDate ?? minDateObject, minDateObject)
+        clampMonthToMin(selectedDate ?? today, minDateObject)
     );
 
     const calendarCells = useMemo(
@@ -157,13 +137,14 @@ export function EventDatePicker({ id, value, minDate, onChange }: EventDatePicke
         year: "numeric",
     });
 
-    const canGoPreviousMonth =
-        new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1) >
-        new Date(minDateObject.getFullYear(), minDateObject.getMonth(), 1);
+    const canGoPreviousMonth = minDateObject
+        ? new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1) >
+          new Date(minDateObject.getFullYear(), minDateObject.getMonth(), 1)
+        : true;
 
     const openChanged = (nextOpen: boolean) => {
         if (nextOpen) {
-            setViewMonth(clampMonthToMin(selectedDate ?? minDateObject, minDateObject));
+            setViewMonth(clampMonthToMin(selectedDate ?? today, minDateObject));
         }
         setOpen(nextOpen);
     };
@@ -253,223 +234,14 @@ export function EventDatePicker({ id, value, minDate, onChange }: EventDatePicke
 }
 
 export function EventTimePicker({ id, value, minTime, maxTime, onChange }: EventTimePickerProps) {
-    const [open, setOpen] = useState(false);
-    const parsedValue = useMemo(() => parseTimeValue(value), [value]);
-
-    const [draftHour, setDraftHour] = useState(parsedValue.hour);
-    const [draftMinute, setDraftMinute] = useState(parsedValue.minute);
-
-    const minMinutes = useMemo(() => timeToMinutes(minTime), [minTime]);
-    const maxMinutes = useMemo(() => timeToMinutes(maxTime), [maxTime]);
-
-    const openChanged = (nextOpen: boolean) => {
-        if (nextOpen) {
-            const parsed = parseTimeValue(value);
-            const roundedMinute = Math.min(55, Math.round(parsed.minute / 5) * 5);
-            setDraftHour(parsed.hour);
-            setDraftMinute(roundedMinute);
-        }
-        setOpen(nextOpen);
-    };
-
-    const isHourDisabled = (hour: number): boolean => {
-        if (minMinutes === null && maxMinutes === null) return false;
-        // Check if this hour has any valid minute slot
-        const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5);
-        return minuteOptions.every((minute) => {
-            const totalMinutes = hour * 60 + minute;
-            if (minMinutes !== null && totalMinutes < minMinutes) return true;
-            if (maxMinutes !== null && totalMinutes > maxMinutes) return true;
-            return false;
-        });
-    };
-
-    const isMinuteDisabled = (minute: number): boolean => {
-        const totalMinutes = draftHour * 60 + minute;
-        if (minMinutes !== null && totalMinutes < minMinutes) return true;
-        if (maxMinutes !== null && totalMinutes > maxMinutes) return true;
-        return false;
-    };
-
-    const displayTime = value ? formatTime(parsedValue.hour, parsedValue.minute) : "Select event time";
-
-    // Build hint text when restricted
-    const hintText = useMemo(() => {
-        if (minTime && maxTime) return `${minTime} – ${maxTime}`;
-        if (minTime) return `From ${minTime}`;
-        if (maxTime) return `Until ${maxTime}`;
-        return null;
-    }, [minTime, maxTime]);
-
-    const hourOptions = Array.from({ length: 24 }, (_, index) => index);
-    const minuteOptions = Array.from({ length: 12 }, (_, index) => index * 5);
-
     return (
-        <Popover open={open} onOpenChange={openChanged}>
-            <PopoverTrigger asChild>
-                <button id={id} type="button" className={triggerClassName}>
-                    <span className={value ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"}>
-                        {displayTime}
-                    </span>
-                    <Clock3 size={16} className="text-gray-500 dark:text-gray-400" />
-                </button>
-            </PopoverTrigger>
-            <PopoverContent
-                align="end"
-                side="bottom"
-                sideOffset={10}
-                collisionPadding={16}
-                className="z-[100100] w-[160px] overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2937] p-0 shadow-2xl"
-            >
-                {/* Range hint */}
-                {hintText && (
-                    <div className="px-2 py-1.5 text-center text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-b border-gray-200 dark:border-gray-700">
-                        Allowed: {hintText}
-                    </div>
-                )}
-
-                {/* Compact Main Time Picker Grid */}
-                <div className="grid h-[150px] grid-cols-2">
-
-                    {/* 24-Hour Column */}
-                    <div
-                        className="
-                            overflow-y-auto border-r
-                            border-gray-200 dark:border-[#41444b]
-                            [scrollbar-width:thin]
-                            [&::-webkit-scrollbar]:w-1
-                        "
-                    >
-                        {hourOptions.map((hour) => {
-                            const disabled = isHourDisabled(hour);
-                            const selected = hour === draftHour;
-
-                            return (
-                                <button
-                                    key={`h-${hour}`}
-                                    type="button"
-                                    disabled={disabled}
-                                    onClick={() => {
-                                        setDraftHour(hour);
-                                        // Auto-reset minute if now invalid
-                                        const currentMinuteTotal = hour * 60 + draftMinute;
-                                        const isCurrentMinuteValid =
-                                            (minMinutes === null || currentMinuteTotal >= minMinutes) &&
-                                            (maxMinutes === null || currentMinuteTotal <= maxMinutes);
-                                        if (!isCurrentMinuteValid) {
-                                            // Find first valid minute
-                                            const firstValid = minuteOptions.find((m) => {
-                                                const t = hour * 60 + m;
-                                                return (minMinutes === null || t >= minMinutes) &&
-                                                    (maxMinutes === null || t <= maxMinutes);
-                                            });
-                                            if (firstValid !== undefined) setDraftMinute(firstValid);
-                                        }
-                                    }}
-                                    className={`
-                                        flex h-[32px] w-full items-center justify-center
-                                        text-[14px] font-medium leading-none transition-colors
-                                        ${disabled
-                                            ? "text-gray-300 dark:text-white/20 cursor-not-allowed opacity-40"
-                                            : selected
-                                                ? "bg-gray-200 text-black dark:bg-[#374151] dark:text-white"
-                                                : "text-gray-700 hover:bg-gray-100 dark:text-white/85 dark:hover:bg-[#2d3748] dark:hover:text-white"
-                                        }
-                                    `}
-                                >
-                                    {String(hour).padStart(2, "0")}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Minute Column (Steps of 5) */}
-                    <div
-                        className="
-                            overflow-y-auto
-                            [scrollbar-width:thin]
-                            [&::-webkit-scrollbar]:w-1
-                        "
-                    >
-                        {minuteOptions.map((minute) => {
-                            const disabled = isMinuteDisabled(minute);
-                            const selected = minute === draftMinute;
-
-                            return (
-                                <button
-                                    key={`m-${minute}`}
-                                    type="button"
-                                    disabled={disabled}
-                                    onClick={() => setDraftMinute(minute)}
-                                    className={`
-                                        flex h-[32px] w-full items-center justify-center
-                                        text-[14px] font-medium leading-none transition-colors
-                                        ${disabled
-                                            ? "text-gray-300 dark:text-white/20 cursor-not-allowed opacity-40"
-                                            : selected
-                                                ? "bg-gray-200 text-black dark:bg-[#374151] dark:text-white"
-                                                : "text-gray-700 hover:bg-gray-100 dark:text-white/85 dark:hover:bg-[#2d3748] dark:hover:text-white"
-                                        }
-                                    `}
-                                >
-                                    {String(minute).padStart(2, "0")}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div
-                    className="
-                        grid grid-cols-2 border-t
-                        border-gray-200 dark:border-[#41444b]
-                        bg-gray-50 dark:bg-[#111827]
-                    "
-                >
-                    <button
-                        type="button"
-                        onClick={() => setOpen(false)}
-                        className="
-                            h-[32px]
-                            text-[11px]
-                            font-bold tracking-wider
-                            text-gray-600 dark:text-gray-300
-                            hover:bg-gray-100 dark:hover:bg-white/5
-                            transition-colors
-                            flex items-center justify-center
-                            border-r border-gray-200 dark:border-[#41444b]
-                        "
-                    >
-                        CANCEL
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            // Prevent confirming a disabled time
-                            const totalMinutes = draftHour * 60 + draftMinute;
-                            const isValid =
-                                (minMinutes === null || totalMinutes >= minMinutes) &&
-                                (maxMinutes === null || totalMinutes <= maxMinutes);
-                            if (!isValid) return;
-                            onChange(formatTime(draftHour, draftMinute));
-                            setOpen(false);
-                        }}
-                        className="
-                            h-[32px]
-                            text-[11px]
-                            font-bold tracking-wider
-                            text-blue-600 dark:text-blue-400
-                            hover:bg-gray-100 dark:hover:bg-white/5
-                            transition-colors
-                            flex items-center justify-center
-                        "
-                    >
-                        OK
-                    </button>
-                </div>
-            </PopoverContent>
-        </Popover>
+        <TimeInput
+            id={id}
+            value={value}
+            min={minTime}
+            max={maxTime}
+            onChange={onChange}
+        />
     );
 }
+

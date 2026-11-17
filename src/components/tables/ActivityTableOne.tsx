@@ -7,9 +7,13 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import { RootState, AppDispatch } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { useRouter } from "next/navigation";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
 import { Activity } from "@/types/activityTypes";
+import { getDisplayImageUrl } from "@/utils/mediaUrl";
+import { formatTime12h } from "@/utils/time";
 import {
     deleteActivityThunk,
     fetchAllActivitiesThunk,
@@ -17,6 +21,7 @@ import {
 
 // UI Components
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
+import { TableIdCell, TableSerialCell, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { Modal } from "../ui/modal";
 import {
     Pagination,
@@ -27,16 +32,15 @@ import {
 } from "@/components/ui/pagination/pagination";
 
 // Modal Forms
-import ActivityView from "../form/Activity/ActivityView";
-import EditActivityForm from "../form/Activity/EditActivityForm";
 import DeleteActivityConfirm from "../form/Activity/DeleteConfirm";
 
 export default function ActivityTableOne() {
     const dispatch = useDispatch<AppDispatch>();
+    const router = useRouter();
     const { isOpen, openModal, closeModal } = useModal();
 
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-    const [modalMode, setModalMode] = useState<"view" | "edit" | "delete" | null>(null);
+    const [modalMode, setModalMode] = useState<"delete" | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -62,10 +66,20 @@ export default function ActivityTableOne() {
         dispatch(fetchAllActivitiesThunk());
     }, [dispatch]);
 
-    const openActivityModal = (activity: Activity, mode: "view" | "edit" | "delete") => {
+    const openActivityModal = (activity: Activity, mode: "delete") => {
         setSelectedActivity(activity);
         setModalMode(mode);
         openModal();
+    };
+
+    const handleView = (activity: Activity) => {
+        if (!activity.id) return;
+        router.push(`/activities/${activity.id}`);
+    };
+
+    const handleEdit = (activity: Activity) => {
+        if (!activity.id) return;
+        router.push(`/activities/${activity.id}/edit`);
     };
 
     const handleDeleteConfirm = async () => {
@@ -95,65 +109,16 @@ export default function ActivityTableOne() {
             closeModal();
         } catch (err: unknown) {
             console.error("Delete failed:", err);
-            const errorMessage = err && typeof err === "object" && "message" in err
-                ? (err as { message: string }).message
-                : MESSAGES.DELETE_ERROR;
-            showError(errorMessage);
+            showApiError(err, MESSAGES.DELETE_ERROR);
         } finally {
             setDeleteLoading(false);
         }
     };
 
-    const renderErrorMessage = (err: unknown): string => {
-        if (typeof err === "string") return err;
-        if (err && typeof err === "object" && "message" in err) {
-            return (err as { message: string }).message;
-        }
-        return JSON.stringify(err);
-    };
+    const renderErrorMessage = (err: unknown): string =>
+        getApiErrorMessage(err, "Something went wrong");
 
-    const formatTime = (value?: string) => {
-        if (!value) return "—";
-
-        const input = value.trim();
-        if (!input) return "—";
-
-        let hour = 0;
-        let minute = 0;
-
-        // Handles "HH:mm" and "HH:mm:ss"
-        const plainTimeMatch = input.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-        if (plainTimeMatch) {
-            hour = Number(plainTimeMatch[1]);
-            minute = Number(plainTimeMatch[2]);
-        } else {
-            // Handles ISO/local datetime strings
-            const parsed = new Date(input);
-            if (Number.isNaN(parsed.getTime())) return input;
-            hour = parsed.getHours();
-            minute = parsed.getMinutes();
-        }
-
-        if (
-            Number.isNaN(hour) ||
-            Number.isNaN(minute) ||
-            hour < 0 ||
-            hour > 23 ||
-            minute < 0 ||
-            minute > 59
-        ) {
-            return input;
-        }
-
-        const displayDate = new Date();
-        displayDate.setHours(hour, minute, 0, 0);
-
-        return displayDate.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        });
-    };
+    const formatTime = (value?: string) => formatTime12h(value);
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -162,7 +127,7 @@ export default function ActivityTableOne() {
                     <Table>
                         <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                             <TableRow>
-                                {["Title", "Description", "Venue", "Date", "Time", "Image", "Created By", "Actions"].map((header) => (
+                                {["S.No.", "ID", "Title", "Description", "State / City", "Date", "Time", "Image", "Created By", "Actions"].map((header) => (
                                     <TableCell
                                         key={header}
                                         isHeader
@@ -178,7 +143,7 @@ export default function ActivityTableOne() {
                             {loading ? (
                                 [...Array(itemsPerPage)].map((_, i) => (
                                     <TableRow key={`skeleton-${i}`}>
-                                        {[...Array(8)].map((_, colIdx) => (
+                                        {[...Array(10)].map((_, colIdx) => (
                                             <TableCell key={`cell-${colIdx}`}>
                                                 <div className={`rounded bg-gray-200 animate-pulse ${colIdx === 5 ? 'h-16 w-16' : colIdx === 1 ? 'h-4 w-48' : 'h-4 w-24'}`} />
                                             </TableCell>
@@ -187,19 +152,21 @@ export default function ActivityTableOne() {
                                 ))
                             ) : error ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-6 text-red-500">
+                                    <TableCell colSpan={10} className="text-center py-6 text-red-500">
                                         Error: {renderErrorMessage(error)}
                                     </TableCell>
                                 </TableRow>
                             ) : activities.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                                    <TableCell colSpan={10} className="text-center py-6 text-gray-500">
                                         No Activity found.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginatedActivities.map((activity) => (
+                                paginatedActivities.map((activity, index) => (
                                     <TableRow key={activity.id}>
+                                        <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.activity)} />
+                                        <TableIdCell id={activity.id} />
                                         <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
                                             {activity.title ? (activity.title.length > 30 ? `${activity.title.slice(0, 30)}...` : activity.title) : "—"}
                                         </TableCell>
@@ -207,10 +174,12 @@ export default function ActivityTableOne() {
                                             {activity.description ? (activity.description.length > 30 ? `${activity.description.slice(0, 30)}...` : activity.description) : "—"}
                                         </TableCell>
                                         <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white">
-                                            {activity.venue || "—"}
+                                            {[activity.state, activity.venue].filter(Boolean).join(" · ") || "—"}
                                         </TableCell>
                                         <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white">
-                                            {activity.date || "—"}
+                                            {activity.end_date && activity.end_date !== activity.date
+                                              ? `${activity.date || "—"} - ${activity.end_date}`
+                                              : activity.date || "—"}
                                         </TableCell>
                                         <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
                                             {activity.start_time && activity.end_time ? (
@@ -222,10 +191,10 @@ export default function ActivityTableOne() {
                                             ) : "—"}
                                         </TableCell>
                                         <TableCell className="px-5 py-4">
-                                            {activity.data ? (
+                                            {getDisplayImageUrl(activity) ? (
                                                 <div className="relative w-16 h-16 rounded-md overflow-hidden">
                                                     <Image
-                                                        src={`data:image/${activity.file_name?.endsWith(".svg") ? "svg+xml" : "png"};base64,${activity.data}`}
+                                                        src={getDisplayImageUrl(activity)}
                                                         alt={activity.title || "Activity image"}
                                                         fill
                                                         className="object-cover"
@@ -242,14 +211,14 @@ export default function ActivityTableOne() {
                                         <TableCell className="px-5 py-4 text-sm">
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={() => openActivityModal(activity, "view")}
+                                                    onClick={() => handleView(activity)}
                                                     title="View"
                                                     className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-black hover:text-blue-600 dark:text-white dark:hover:text-blue-600"
                                                 >
                                                     <Eye size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => openActivityModal(activity, "edit")}
+                                                    onClick={() => handleEdit(activity)}
                                                     title="Edit"
                                                     className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-black hover:text-green-600 dark:text-white dark:hover:text-green-600"
                                                 >
@@ -298,12 +267,6 @@ export default function ActivityTableOne() {
 
             <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
                 <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-                    {modalMode === "view" && selectedActivity && (
-                        <ActivityView activity={selectedActivity} onClose={closeModal} />
-                    )}
-                    {modalMode === "edit" && selectedActivity && (
-                        <EditActivityForm activity={selectedActivity} closeModal={closeModal} />
-                    )}
                     {modalMode === "delete" && selectedActivity && (
                         <DeleteActivityConfirm
                             onConfirm={handleDeleteConfirm}

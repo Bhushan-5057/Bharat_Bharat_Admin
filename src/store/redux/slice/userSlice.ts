@@ -5,6 +5,7 @@ import {
   fetchUserById,
   updateUser,
 } from "@/store/api/userApi";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 export interface User {
@@ -47,14 +48,6 @@ interface UpdateUserPayload {
   password?: string;
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === "object" && error !== null && "response" in error) {
-    const errObj = error as { response?: { data?: string } };
-    return errObj.response?.data || fallback;
-  }
-  return error instanceof Error ? error.message : fallback;
-}
-
 export const createUserThunk = createAsyncThunk(
   "user/createUser",
   async (payload: CreateUserPayload, { rejectWithValue }) => {
@@ -62,7 +55,7 @@ export const createUserThunk = createAsyncThunk(
       const response = await createUser(payload);
       return response;
     } catch (error: unknown) {
-      return rejectWithValue(getErrorMessage(error, "Failed to create user"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to create user"));
     }
   }
 );
@@ -74,7 +67,7 @@ export const updateUserThunk = createAsyncThunk(
       const response = await updateUser(payload);
       return response;
     } catch (error: unknown) {
-      return rejectWithValue(getErrorMessage(error, "Failed to update user"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to update user"));
     }
   }
 );
@@ -86,7 +79,7 @@ export const deleteUserThunk = createAsyncThunk(
       const response = await deleteUser(id);
       return { id, message: response.message || "User deleted" };
     } catch (error: unknown) {
-      return rejectWithValue(getErrorMessage(error, "Failed to delete user"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to delete user"));
     }
   }
 );
@@ -98,7 +91,7 @@ export const fetchAllUsersThunk = createAsyncThunk(
       const users = await fetchAllUsers();
       return users;
     } catch (error: unknown) {
-      return rejectWithValue(getErrorMessage(error, "Failed to fetch users"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to fetch users"));
     }
   }
 );
@@ -110,7 +103,7 @@ export const fetchUserByIdThunk = createAsyncThunk(
       const user = await fetchUserById(id);
       return user;
     } catch (error: unknown) {
-      return rejectWithValue(getErrorMessage(error, "Failed to fetch user"));
+      return rejectWithValue(getApiErrorMessage(error, "Failed to fetch user"));
     }
   }
 );

@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AppDispatch } from "@/store/redux/store";
 import { MESSAGES } from "@/components/common/constants/utlis";
 import { showSuccess } from "@/lib/utils/toast";
-import { MEMBER_CATEGORIES, Member, MemberPayload } from "@/types/memberTypes";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
+import { MEMBER_CATEGORIES, Member, MemberCategory, MemberPayload } from "@/types/memberTypes";
 import { MemberFormData, memberSchema } from "@/validations/memberSchema";
 import { addMember, editMember } from "@/store/redux/slice/memberSlice";
 
@@ -16,6 +17,15 @@ interface MemberFormProps {
   mode?: "add" | "edit";
   onSuccess?: () => void;
 }
+
+const CORE_COMMITTEE: MemberCategory = "National Core Commitee";
+const EXECUTIVE_COUNCIL: MemberCategory = "National Excutive Council";
+
+const normalizeMemberCategory = (value?: string | null): MemberCategory => {
+  const normalized = (value || "").toLowerCase();
+  if (normalized.includes("core")) return CORE_COMMITTEE;
+  return EXECUTIVE_COUNCIL;
+};
 
 export const MemberForm: React.FC<MemberFormProps> = ({
   initialMember,
@@ -36,10 +46,7 @@ export const MemberForm: React.FC<MemberFormProps> = ({
     resolver: zodResolver(memberSchema),
     defaultValues: {
       name: initialMember?.name || "",
-      category:
-        initialMember?.category === "national core commitee"
-          ? "national core commitee"
-          : "national excutive council",
+      category: normalizeMemberCategory(initialMember?.category),
       designation: initialMember?.designation || "",
     },
   });
@@ -50,17 +57,12 @@ export const MemberForm: React.FC<MemberFormProps> = ({
     if (!initialMember) return;
 
     setValue("name", initialMember.name || "");
-    setValue(
-      "category",
-      initialMember.category === "national core commitee"
-        ? "national core commitee"
-        : "national excutive council"
-    );
+    setValue("category", normalizeMemberCategory(initialMember.category));
     setValue("designation", initialMember.designation || "");
   }, [initialMember, setValue]);
 
   useEffect(() => {
-    if (selectedCategory !== "national core commitee") {
+    if (selectedCategory !== CORE_COMMITTEE) {
       setValue("designation", "", { shouldValidate: true });
     }
   }, [selectedCategory, setValue]);
@@ -74,7 +76,7 @@ export const MemberForm: React.FC<MemberFormProps> = ({
         category: data.category,
       };
 
-      if (data.category === "national core commitee") {
+      if (data.category === CORE_COMMITTEE) {
         payload.designation = data.designation?.trim();
       }
 
@@ -93,14 +95,14 @@ export const MemberForm: React.FC<MemberFormProps> = ({
       } else {
         setError("name", {
           type: "server",
-          message: (resultAction.payload as string) || "Operation failed",
+          message: getApiErrorMessage(resultAction.payload, "Operation failed"),
         });
       }
     } catch (err) {
       console.error("Member save failed", err);
       setError("name", {
         type: "server",
-        message: "Failed to save member",
+        message: getApiErrorMessage(err, "Failed to save member"),
       });
     } finally {
       setLoading(false);
@@ -110,7 +112,7 @@ export const MemberForm: React.FC<MemberFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="max-w-sm mx-auto bg-white dark:bg-neutral-900 shadow-md rounded-2xl p-6 space-y-5 max-h-[65vh] overflow-y-auto custome-scroll"
+      className="max-w-sm mx-auto bg-white dark:bg-neutral-900 shadow-md rounded-2xl p-6 space-y-5"
     >
       <div className="flex flex-col">
         <label className="mb-2 font-medium text-gray-800 dark:text-white">
@@ -149,7 +151,7 @@ export const MemberForm: React.FC<MemberFormProps> = ({
         )}
       </div>
 
-      {selectedCategory === "national core commitee" && (
+      {selectedCategory === CORE_COMMITTEE && (
         <div className="flex flex-col">
           <label className="mb-2 font-medium text-gray-800 dark:text-white">
             Designation

@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
+import { Textarea } from "@/components/ui/textarea/textarea";
+import { FormField } from "@/components/ui/form-field";
 import Button from "@/components/ui/button/Button";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/redux/store";
 import { MESSAGES } from "@/components/common/constants/utlis";
@@ -66,10 +68,7 @@ export default function AddBearerForm({ closeModal }: { closeModal?: () => void 
             setPreview(null);
         } catch (err: unknown) {
             console.error("Add bearer failed:", err);
-            const errorMessage = err && typeof err === "object" && "message" in err
-                ? (err as { message: string }).message
-                : MESSAGES.ADD_ERROR;
-            showError(errorMessage);
+            showApiError(err, MESSAGES.ADD_ERROR);
         }
     };
 
@@ -101,16 +100,14 @@ export default function AddBearerForm({ closeModal }: { closeModal?: () => void 
                 {errors.designation && <p className="text-red-600 text-sm">{errors.designation.message}</p>}
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="quotes">Quotes</Label>
-                <textarea
+            <FormField label="Quotes" htmlFor="quotes" error={errors.quotes?.message}>
+                <Textarea
                     id="quotes"
-                    placeholder="Enter quotes"
-                    className="w-full border rounded-md p-2 text-sm"
+                    fieldSize="sm"
+                    placeholder="Enter a short quote"
                     {...register("quotes")}
                 />
-                {errors.quotes && <p className="text-red-600 text-sm">{errors.quotes.message}</p>}
-            </div>
+            </FormField>
 
             <div className="space-y-2">
                 <Label htmlFor="gmail">Email</Label>

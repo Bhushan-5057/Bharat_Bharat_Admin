@@ -15,9 +15,13 @@ export interface Blog {
   };
   createdAt: string;
   updatedAt: string;
-  file_name?: string;   
-  data?: string;   
-file?: string; 
+  file_name?: string;
+  url?: string | null;
+  cloudinary_url?: string | null;
+  cloudinary_public_id?: string | null;
+  cloudinary_resource_type?: "image" | "video" | "raw" | null;
+  data?: string | null;
+  file?: string;
 }
 
 export interface CreateBlogPayload {

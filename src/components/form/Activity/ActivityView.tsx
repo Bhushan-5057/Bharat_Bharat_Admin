@@ -3,148 +3,178 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Activity } from "@/types/activityTypes";
+import { getDisplayImageUrl, getMediaUrl } from "@/utils/mediaUrl";
+import { formatTime12h } from "@/utils/time";
+import ImagePreviewModal from "@/components/common/ImagePreviewModal";
 
 interface Props {
   activity: Activity | null;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export default function ActivityView({
   activity,
-  onClose,
 }: Props) {
-  const [isImageOpen, setIsImageOpen] =
-    useState(false);
+  const [selectedImage, setSelectedImage] =
+    useState<string | null>(null);
 
   if (!activity) return null;
 
-  const formatTime = (timeStr?: string) => {
-    if (!timeStr) return "N/A";
-    const date = new Date(timeStr);
-    if (isNaN(date.getTime())) return timeStr;
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
+  const formatDisplayDate = (value?: string | null) => {
+    if (!value) return null;
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return value;
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
-  const imageSrc = activity.data
-    ? `data:image/${
-        activity.file_name?.endsWith(".svg")
-          ? "svg+xml"
-          : "png"
-      };base64,${activity.data}`
-    : "/placeholder.png";
+  const formattedDate = (() => {
+    const start = formatDisplayDate(activity.date);
+    if (!start) return "N/A";
+
+    const end = formatDisplayDate(activity.end_date);
+    if (!end || end === start) return start;
+    return `${start} - ${end}`;
+  })();
+
+  const galleryImages =
+    activity.images && activity.images.length > 0
+      ? activity.images
+      : getDisplayImageUrl(activity)
+        ? [
+            {
+              id: 0,
+              url: getDisplayImageUrl(activity),
+              file_name: activity.file_name,
+            },
+          ]
+        : [];
+
+  const closePreview = () => setSelectedImage(null);
 
   return (
-    <div
-      className="space-y-4 mt-2 max-w-lg mx-auto p-4 sm:p-6 bg-white dark:bg-black dark:text-white rounded-lg overflow-auto"
-      style={{ maxHeight: "90vh" }}
-    >
-      <div className="flex items-center gap-4">
-        <Image
-          src={imageSrc}
-          alt={activity.title}
-          width={80}
-          height={80}
-          className="rounded-md object-cover border cursor-pointer"
-          onClick={() =>
-            setIsImageOpen(true)
-          }
-        />
-
+    <>
+      <div className="relative w-full rounded-2xl bg-white p-5 dark:bg-gray-900 sm:p-6">
         <div>
-          <p className="font-medium text-gray-800 dark:text-white">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
             {activity.title}
-          </p>
+          </h2>
         </div>
-      </div>
 
-      <div className="space-y-2">
-        {activity.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            <span className="font-semibold text-gray-800 dark:text-white">
-              Description:
-            </span>{" "}
-            {activity.description}
-          </p>
-        )}
+        <div className="mt-6 space-y-4">
+          {activity.description && (
+            <div>
+              <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                Description
+              </p>
+              <p className="mt-1 whitespace-pre-wrap break-words leading-7 text-gray-600 dark:text-gray-300">
+                {activity.description}
+              </p>
+            </div>
+          )}
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            Venue:
-          </span>{" "}
-          {activity.venue || "N/A"}
-        </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                State / City
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {[activity.state, activity.venue].filter(Boolean).join(" · ") || "N/A"}
+              </p>
+            </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            Date:
-          </span>{" "}
-          {activity.date || "N/A"}
-        </p>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Date
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {formattedDate}
+              </p>
+            </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            Start Time:
-          </span>{" "}
-          {formatTime(activity.start_time)}
-        </p>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Start Time
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {formatTime12h(activity.start_time, "N/A")}
+              </p>
+            </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            End Time:
-          </span>{" "}
-          {formatTime(activity.end_time)}
-        </p>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                End Time
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {formatTime12h(activity.end_time, "N/A")}
+              </p>
+            </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            File name:
-          </span>{" "}
-          {activity.file_name || "N/A"}
-        </p>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                File Name
+              </p>
+              <p className="mt-1 break-all text-base font-medium text-gray-800 dark:text-white">
+                {activity.file_name || "N/A"}
+              </p>
+            </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          <span className="font-semibold text-gray-800 dark:text-white">
-            Created By:
-          </span>{" "}
-          {activity?.creator?.name || "N/A"}
-        </p>
-      </div>
-
-      <div className="pt-2">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium text-gray-800 dark:text-white"
-        >
-          Close
-        </button>
-      </div>
-
-      {isImageOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="relative">
-            <Image
-              src={imageSrc}
-              alt="Expanded Activity Image"
-              width={600}
-              height={600}
-              className="rounded-lg object-contain max-h-[80vh] max-w-[90vw]"
-            />
-
-            <button
-              onClick={() =>
-                setIsImageOpen(false)
-              }
-              className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg text-gray-800 dark:text-white"
-            >
-              ✕
-            </button>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Created By
+              </p>
+              <p className="mt-1 text-base font-medium text-gray-800 dark:text-white">
+                {activity?.creator?.name || "N/A"}
+              </p>
+            </div>
           </div>
+
+          {galleryImages.length > 0 && (
+            <div>
+              <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                Images
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {galleryImages.map((img, i) => {
+                  const src = getMediaUrl(img);
+                  if (!src) return null;
+                  return (
+                    <button
+                      key={img.id || i}
+                      type="button"
+                      onClick={() => setSelectedImage(src)}
+                      className="relative h-48 w-full cursor-pointer overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 transition hover:opacity-90"
+                      aria-label={`View ${activity.title} image ${i + 1}`}
+                    >
+                      <Image
+                        src={src}
+                        alt={activity.title}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+
+      <ImagePreviewModal
+        src={selectedImage}
+        alt={activity.title}
+        onClose={closePreview}
+      />
+    </>
   );
 }

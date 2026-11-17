@@ -1,14 +1,22 @@
 
-
 import { City, CityImage, CreateCityPayload, UpdateCityPayload } from "@/types/cityTypes";
 import axiosInstance from "./axiosInstance";
 
 
+const appendContacts = (
+    formData: FormData,
+    contacts: CreateCityPayload["contacts"] | UpdateCityPayload["contacts"]
+) => {
+    if (!Array.isArray(contacts) || contacts.length === 0) return;
+    formData.append("contacts", JSON.stringify(contacts));
+};
+
 const buildFormData = (
-    payload: CreateCityPayload | UpdateCityPayload & { mainImageIndex?: number }
+    payload: (CreateCityPayload | UpdateCityPayload) & { mainImageIndex?: number }
 ) => {
     const formData = new FormData();
 
+    if (payload.state) formData.append("state", payload.state);
     if (payload.title) formData.append("title", payload.title);
     if (payload.description) formData.append("description", payload.description);
 
@@ -19,18 +27,55 @@ const buildFormData = (
             formData.append("is_main", index === payload.mainImageIndex ? "true" : "false");
         });
     }
+
+    appendContacts(formData, payload.contacts);
+
     return formData;
 };
 
+const isCityRecord = (value: unknown): value is City =>
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    ("id" in value || "title" in value);
+
+const nestedCity = (record: Record<string, unknown>): unknown =>
+    record.citiyWithRelation ?? record.city ?? record.data;
+
+export const unwrapCity = (data: unknown): City => {
+    let city: City | undefined;
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+        const record = data as Record<string, unknown>;
+        const inner = nestedCity(record);
+        if (isCityRecord(inner)) city = inner;
+        else if (isCityRecord(data)) city = data;
+    }
+    if (!city) city = data as City;
+    return {
+        ...city,
+        contacts: Array.isArray(city.contacts) ? city.contacts : [],
+    };
+};
+
+const unwrapCityList = (data: unknown): City[] => {
+    if (Array.isArray(data)) return data as City[];
+    if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+        if (Array.isArray(record.data)) return record.data as City[];
+        if (Array.isArray(record.cities)) return record.cities as City[];
+    }
+    return [];
+};
+
 export const fetchAllCities = async (): Promise<City[]> => {
-    const response = await axiosInstance.get<City[]>("/cities/get-all");
-    return response.data;
+    const response = await axiosInstance.get("/cities/get-all");
+    return unwrapCityList(response.data);
 };
 
 
 export const fetchCityById = async (id: string): Promise<City> => {
     const response = await axiosInstance.get<City>(`/cities/get/${id}`);
-    return response.data;
+    return unwrapCity(response.data);
 };
 
 
@@ -40,14 +85,14 @@ export const createCity = async (
     const formData = buildFormData(payload);
 
 
-    const response = await axiosInstance.post<City>(
+    const response = await axiosInstance.post(
         "/cities/create",
         formData,
         {
             headers: { "Content-Type": "multipart/form-data" },
         }
     );
-    return response.data;
+    return unwrapCity(response.data);
 };
 
 
@@ -57,8 +102,13 @@ export const updateCity = async (
 ) => {
     const formData = new FormData();
 
+    if (payload.state) formData.append("state", payload.state);
     if (payload.title) formData.append("title", payload.title);
     if (payload.description) formData.append("description", payload.description);
+
+    if (payload.contacts !== undefined) {
+        appendContacts(formData, payload.contacts);
+    }
 
 
     if (payload.images && payload.images.length > 0) {
@@ -81,7 +131,7 @@ export const updateCity = async (
         headers: { "Content-Type": "multipart/form-data" },
     });
 
-    return response.data;
+    return unwrapCity(response.data);
 };
 
 
@@ -111,4 +161,3 @@ export const deleteCitiesImage = async (imageId: string): Promise<{ message: str
     );
     return response.data;
 };
-

@@ -8,10 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { TableIdCell, TableIdHeader, TableSerialCell, TableSerialHeader, TABLE_SERIAL_PREFIX, getTableSerialNumber } from "./TableIdColumn";
 import { ArrowDownUp, Eye, Pencil, Search, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/redux/store";
 import { useModal } from "@/hooks/useModal";
+import { useRouter } from "next/navigation";
 import { Modal } from "../ui/modal";
 import {
   Pagination,
@@ -21,17 +23,17 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination/pagination";
 import { MEMBER_CATEGORIES, Member, MemberQueryParams } from "@/types/memberTypes";
-import { getMemberById, getMembers, removeMember } from "@/store/redux/slice/memberSlice";
-import { showError, showSuccess } from "@/lib/utils/toast";
+import { getMembers, removeMember } from "@/store/redux/slice/memberSlice";
+import { showApiError, showSuccess } from "@/lib/utils/toast";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 import { MESSAGES } from "../common/constants/utlis";
-import { MemberForm } from "../form/Members/MemberForm";
-import MemberView from "../form/Members/MemberView";
 import DeleteMemberConfirm from "../form/Members/DeleteMemberConfirm";
 
-type ModalMode = "view" | "edit" | "delete" | null;
+type ModalMode = "delete" | null;
 
 export default function MemberTableOne() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
 
   const { members, loading, error, totalPages } = useSelector(
@@ -41,7 +43,6 @@ export default function MemberTableOne() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [viewLoading, setViewLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -94,24 +95,12 @@ export default function MemberTableOne() {
     setCurrentPage(1);
   };
 
-  const handleView = async (member: Member) => {
-    setSelectedMember(member);
-    setModalMode("view");
-    openModal();
-    setViewLoading(true);
-
-    try {
-      const memberDetails = await dispatch(getMemberById(member.id)).unwrap();
-      setSelectedMember(memberDetails);
-    } catch (err) {
-      console.error("Fetch member details failed", err);
-      showError("Failed to load member details");
-    } finally {
-      setViewLoading(false);
-    }
+  const handleView = (member: Member) => {
+    if (!member.id) return;
+    router.push(`/members/${member.id}`);
   };
 
-  const openMemberModal = (member: Member, mode: Exclude<ModalMode, "view" | null>) => {
+  const openMemberModal = (member: Member, mode: Exclude<ModalMode, null>) => {
     setSelectedMember(member);
     setModalMode(mode);
     openModal();
@@ -132,19 +121,14 @@ export default function MemberTableOne() {
       closeModal();
     } catch (err) {
       console.error("Delete member failed", err);
-      showError(MESSAGES.DELETE_ERROR || "Failed to delete member");
+      showApiError(err, MESSAGES.DELETE_ERROR || "Failed to delete member");
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const renderErrorMessage = (err: unknown) => {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err) {
-      return (err as { message: string }).message;
-    }
-    return "Something went wrong";
-  };
+  const renderErrorMessage = (err: unknown) =>
+    getApiErrorMessage(err, "Something went wrong");
 
   const renderSortableHeader = (
     label: string,
@@ -199,6 +183,8 @@ export default function MemberTableOne() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableSerialHeader />
+                <TableIdHeader />
                 <TableCell isHeader className="px-5 py-3 text-start">
                   {renderSortableHeader("Name", "name")}
                 </TableCell>
@@ -221,7 +207,7 @@ export default function MemberTableOne() {
               {loading ? (
                 [...Array(5)].map((_, index) => (
                   <TableRow key={`member-skeleton-${index}`}>
-                    {Array(5)
+                    {Array(7)
                       .fill(0)
                       .map((__, cellIndex) => (
                         <TableCell key={cellIndex} className="px-5 py-4">
@@ -245,6 +231,8 @@ export default function MemberTableOne() {
               ) : (
                 members.map((member, index) => (
                   <TableRow key={member.id || `member-${index}`}>
+                    <TableSerialCell value={getTableSerialNumber(currentPage, itemsPerPage, index, TABLE_SERIAL_PREFIX.member)} />
+                    <TableIdCell id={member.id} />
                     <TableCell className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white">
                       {member.name}
                     </TableCell>
@@ -267,7 +255,7 @@ export default function MemberTableOne() {
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => openMemberModal(member, "edit")}
+                          onClick={() => member.id && router.push(`/members/${member.id}/edit`)}
                           className="p-2 rounded-full hover:bg-gray-100 hover:text-green-600 dark:hover:bg-gray-800"
                           title="Edit"
                         >
@@ -318,27 +306,6 @@ export default function MemberTableOne() {
 
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[600px] m-4">
         <div className="relative w-full overflow-y-auto rounded-xl bg-white p-6 dark:bg-gray-900">
-          {modalMode === "view" && selectedMember && (
-            viewLoading ? (
-              <div className="space-y-3">
-                <div className="h-5 w-32 rounded bg-gray-200 animate-pulse dark:bg-gray-700" />
-                <div className="h-4 w-48 rounded bg-gray-200 animate-pulse dark:bg-gray-700" />
-                <div className="h-4 w-40 rounded bg-gray-200 animate-pulse dark:bg-gray-700" />
-              </div>
-            ) : (
-              <MemberView member={selectedMember} />
-            )
-          )}
-          {modalMode === "edit" && selectedMember && (
-            <MemberForm
-              mode="edit"
-              initialMember={selectedMember}
-              onSuccess={async () => {
-                await refreshCurrentPage();
-                closeModal();
-              }}
-            />
-          )}
           {modalMode === "delete" && selectedMember && (
             <DeleteMemberConfirm
               name={selectedMember.name}
